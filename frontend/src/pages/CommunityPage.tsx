@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import CommunityPostCard from '../components/ui/CommunityPostCard';
-import ThreadDetail from '../components/ui/ThreadDetail';
+import CommunityPostCard from '../components/community/CommunityPostCard';
+import ThreadDetail from '../components/community/ThreadDetail';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { CommunityDoodles } from '../components/ui/PageDoodles';
-import CommunityHealth from '../components/ui/CommunityHealth';
+import CommunityHealth from '../components/community/CommunityHealth';
 import api, { friendlyError } from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 import { useAuthGate } from '../context/AuthModalContext';
@@ -267,9 +266,8 @@ export default function CommunityPage() {
   return (
     <div className="min-h-screen bg-bg grid-bg relative">
       <CommunityDoodles />
-      <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-10 relative z-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-8 sm:pb-10 relative z-10">
 
         <div className="flex items-start justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="min-w-0">

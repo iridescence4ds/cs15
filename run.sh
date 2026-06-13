@@ -207,7 +207,7 @@ start_backend() {
   ln -sf "session_${SESSION_TIMESTAMP}.txt" "$ROOT/main_log.txt" 2>/dev/null || true
 
   # Run tsx — prefix with [backend], tee to session log
-  node_modules/.bin/tsx watch server.ts 2>&1 | \
+  ../node_modules/.bin/tsx watch server.ts 2>&1 | \
     sed -u "s/^\([^[]]*\)/[backend] \1/" | \
     tee "$SESSION_LOG" &
   BACKEND_PID=$!

@@ -1,17 +1,17 @@
 import { Request, Response } from 'express';
 import mongoose, { Types } from 'mongoose';
 import SearchLog from '../models/SearchLog.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 import { LRUCache } from 'lru-cache';
-import { logger } from '../utils/logger.js';
-import { getCachedResults, setCachedResults } from '../utils/cache.js';
+import { logger } from '../utils/http/logger.js';
+import { getCachedResults, setCachedResults } from '../utils/http/cache.js';
 import {
   computeRRF,
   applySearchThreshold,
   type SearchResultItem,
   type ResultSource,
-} from '../utils/search.js';
-import { searchRequests, searchResultsReturned, searchLogFlushActive, searchLogFlushes } from '../utils/metrics.js';
+} from '../utils/http/search.js';
+import { searchRequests, searchResultsReturned, searchLogFlushActive, searchLogFlushes } from '../utils/http/metrics.js';
 import { searchKnowledge } from '../services/knowledgeBase.js';
 
 // Cache configuration: Store up to 500 recent queries for 1 hour to reduce DB/AI loads

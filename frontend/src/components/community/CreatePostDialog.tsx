@@ -209,7 +209,25 @@ export default function CreatePostDialog({ onClose, onCreated, prefillTitle = ''
   const hasHighConfidenceFaqMatch = duplicateMatch?.matches?.some(
     (m: any) => m.source === 'faq' && m.score >= 0.85
   );
-  const isSubmitDisabled = !title.trim() || !body.trim() || hasHighConfidenceFaqMatch || checkingDuplicates || loading;
+  // v1.65.1 — BUGFIX: the "Post Question" button must be disabled
+  // while a Cloudinary upload is in flight. Without this, a user
+  // can pick a file and click Post before the await in
+  // handleAttachmentFile resolves + setAttachments fires + React
+  // re-renders. The submit handler's `attachments` closure still
+  // reads [] at that moment, so the post gets created with no
+  // attachments and the image never references the (already
+  // uploaded) Cloudinary asset. Symptom: post is created, image
+  // is on Cloudinary, post body in the feed has no thumbnail.
+  // The "+" pick-file button is already disabled while attaching
+  // (so the user can see the spinner), but the submit button was
+  // not — this commit closes that gap.
+  const isSubmitDisabled =
+    !title.trim() ||
+    !body.trim() ||
+    hasHighConfidenceFaqMatch ||
+    checkingDuplicates ||
+    loading ||
+    attaching;
 
   return (
     <dialog

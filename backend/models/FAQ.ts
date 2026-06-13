@@ -63,6 +63,29 @@ export interface IFAQ extends Document {
   sourceMeetingTopic: string | null;
   /** The ZoomInsight record this FAQ was promoted from (for traceability) */
   sourceInsightId: Types.ObjectId | null;
+  // ── Batch + Category scoping ────────────────────────────────────────────
+  /** The program run (e.g. "Summer Internship 2026") this FAQ belongs to. */
+  batchId: Types.ObjectId | null;
+  /** Optional reference to the canonical Category document. */
+  categoryId: Types.ObjectId | null;
+  // ── Public guest-page analytics (additive, computed fields) ────────────
+  // Recomputed every 5 min by the public-page aggregation job. Never written
+  // by admin/user paths. Used for /api/public/popular-faqs ranking.
+  popularityScore: number;
+  /** Anonymous view count — separate from `views` (which tracks authed users). */
+  guestViewCount: number;
+  /** Mean scroll depth (0..1) across all guest readers in the rolling window. */
+  avgReadCompletion: number;
+  /** Mean actual/expected read-time ratio (0..1) across guest readers. */
+  avgTimeSpentRatio: number;
+  /** Rolling 24h anonymous view count — drives "trending" lists. */
+  guestViewLast24h: number;
+  /** Cached word count of question + answer, used for expectedReadMs. */
+  wordCount: number;
+  /** Cached expected read time in ms, based on 200 wpm. */
+  expectedReadMs: number;
+  /** Last popularity score recompute timestamp. */
+  popularityUpdatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -232,6 +255,31 @@ const faqSchema = new MongooseSchema(
       },
       default: null,
     },
+    // ── Batch + Category scoping ────────────────────────────────────────────
+    /** The program run (e.g. "Summer Internship 2026") this FAQ belongs to. */
+    batchId: {
+      type: MongooseSchema.Types.ObjectId,
+      ref: 'Batch',
+      required: false, // false during migration; the migrate script backfills
+      index: true,
+      default: null,
+    },
+    /** Optional reference to the canonical Category document. */
+    categoryId: {
+      type: MongooseSchema.Types.ObjectId,
+      ref: 'Category',
+      default: null,
+      index: true,
+    },
+    // ── Public guest-page analytics (additive, computed fields) ────────────
+    popularityScore:    { type: Number, default: 0 },
+    guestViewCount:     { type: Number, default: 0 },
+    avgReadCompletion:  { type: Number, default: 0 },
+    avgTimeSpentRatio:  { type: Number, default: 0 },
+    guestViewLast24h:   { type: Number, default: 0 },
+    wordCount:          { type: Number, default: 0 },
+    expectedReadMs:     { type: Number, default: 0 },
+    popularityUpdatedAt:{ type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -244,5 +292,13 @@ faqSchema.index({ status: 1, category: 1 });
 faqSchema.index({ freshnessTier: 1, lastVerifiedDate: 1 });
 faqSchema.index({ createdAt: -1 });
 faqSchema.index({ helpfulVotes: -1, views: -1 });
+// Public page: ranked queries
+faqSchema.index({ status: 1, popularityScore: -1 });
+faqSchema.index({ status: 1, category: 1, popularityScore: -1 });
+// Batch-scoped: every public read filters by batchId first
+faqSchema.index({ batchId: 1, status: 1, createdAt: -1 });
+faqSchema.index({ batchId: 1, status: 1, popularityScore: -1 });
+faqSchema.index({ batchId: 1, category: 1, status: 1, createdAt: -1 });
+faqSchema.index({ batchId: 1, status: 1, category: 1, popularityScore: -1 });
 
 export default mongoose.model<IFAQ>('FAQ', faqSchema, 'yaksha_faq_faqs');

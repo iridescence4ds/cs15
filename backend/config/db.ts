@@ -1,6 +1,6 @@
 // Import Mongoose to interact with MongoDB
 import mongoose, { Connection } from 'mongoose';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // Cache connection in serverless environment
 let cachedConnection: Connection | null = null;

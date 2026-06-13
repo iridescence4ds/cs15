@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CommunityPost from '../models/CommunityPost.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 /** GET /api/community/bookmarks — get current user's bookmarked posts */
 export async function getBookmarks(req: Request, res: Response): Promise<void> {

@@ -9,7 +9,7 @@ import {
 } from '../services/knowledgeBase.js';
 import { runRag } from '../services/rag.js';
 import { TranscriptKnowledge } from '../models/TranscriptKnowledge.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── List all knowledge entries ──────────────────────────────────────────────
 

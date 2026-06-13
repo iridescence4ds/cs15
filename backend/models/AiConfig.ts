@@ -16,8 +16,8 @@
  */
 
 import mongoose, { Schema, type Document } from 'mongoose';
-import { encrypt, decrypt } from '../utils/crypto.js';
-import { logger } from '../utils/logger.js';
+import { encrypt, decrypt } from '../utils/auth/crypto.js';
+import { logger } from '../utils/http/logger.js';
 
 export type AIProviderType = 'anthropic' | 'openai' | 'xai' | 'minimax' | 'gemini' | 'custom';
 

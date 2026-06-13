@@ -60,7 +60,11 @@ import {
   revealApiKey,
 } from '../controllers/aiConfigController.js';
 
+import adminProjectsRoutes from './adminProjects.js';
+
 const router = Router();
+
+router.use('/projects', adminProjectsRoutes);
 
 router.use(adminOnly);
 

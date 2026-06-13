@@ -21,10 +21,10 @@
 import { Request, Response } from 'express';
 import mongoose, { Types } from 'mongoose';
 import FAQ from '../models/FAQ.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 import { searchKnowledge } from '../services/knowledgeBase.js';
-import { chatWithConfig } from '../utils/aiProvider.js';
-import { getPipelineProviderConfig } from '../utils/aiProvider.js';
+import { chatWithConfig } from '../utils/ai/aiProvider.js';
+import { getPipelineProviderConfig } from '../utils/ai/aiProvider.js';
 import { PipelineResult } from '../models/PipelineResult.js';
 import {
   searchKnowledgeWithFallback,
@@ -32,7 +32,7 @@ import {
   buildAuditMetaUpdate,
   logPipelineEvent,
   isSensitiveContent,
-} from '../utils/pipelineCommon.js';
+} from '../utils/ai/pipelineCommon.js';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const AUDIT_BATCH_SIZE = parseInt(process.env['FAQ_AUDIT_BATCH_SIZE'] || '20');

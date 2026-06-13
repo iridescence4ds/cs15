@@ -1,16 +1,18 @@
 import { Request, Response } from 'express';
 import mongoose, { Types } from 'mongoose';
 import FAQ, { type IFAQ } from '../models/FAQ.js';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { logger } from '../utils/logger.js';
-import { invalidateCache } from '../utils/cache.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { logger } from '../utils/http/logger.js';
+import { invalidateCache } from '../utils/http/cache.js';
 import { createTeaDropsForFAQ } from './teaNotificationController.js';
 import FreshReviewVote from '../models/FreshReviewVote.js';
 import FreshReviewLog, { type FreshReviewEventType } from '../models/FreshReviewLog.js';
 import User, { calculateTier } from '../models/User.js';
 import ReputationLog from '../models/ReputationLog.js';
 import { autoAwardBadges } from './reputationController.js';
-import { sanitizeHtml } from '../utils/sanitize.js';
+import { sanitizeHtml } from '../utils/http/sanitize.js';
+import Batch from '../models/Batch.js';
+import { invalidatePublicCaches } from './publicFaqController.js';
 
 async function logFreshEvent(
   event: FreshReviewEventType,
@@ -286,17 +288,27 @@ export const getPaginatedFAQs = async (req: Request<{}, {}, {}, GetPaginatedFAQs
 export const createFAQ = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
-      question, answer, category,
+      question, answer, category, batchId,
       freshnessTier,
       reviewIntervalDays,
     } = req.body as {
-      question?: string; answer?: string; category?: string;
+      question?: string; answer?: string; category?: string; batchId?: string;
       freshnessTier?: 'evergreen' | 'seasonal' | 'volatile';
       reviewIntervalDays?: number;
     };
 
     if (!question || !answer || !category) {
       res.status(400).json({ message: 'Question, answer, and category are required.' });
+      return;
+    }
+    if (!batchId || !Types.ObjectId.isValid(batchId)) {
+      res.status(400).json({ message: 'A valid batchId is required.' });
+      return;
+    }
+    // Verify the batch exists (and is active — we don't allow new FAQs in archived programs).
+    const batchExists = await Batch.exists({ _id: batchId, isActive: true });
+    if (!batchExists) {
+      res.status(400).json({ message: 'Program not found or archived.' });
       return;
     }
 
@@ -319,6 +331,7 @@ export const createFAQ = async (req: Request, res: Response): Promise<void> => {
       question: question_,
       answer: answer_,
       category: category_,
+      batchId: new Types.ObjectId(batchId),
       embedding,
       freshnessTier: tier,
       reviewIntervalDays: interval,
@@ -333,6 +346,8 @@ export const createFAQ = async (req: Request, res: Response): Promise<void> => {
 
     // Invalidate search cache so new FAQ appears in results immediately
     await invalidateCache();
+    // Public page cache (popular/recent/categories) — newly-created FAQ may surface in < 5 min.
+    invalidatePublicCaches();
 
     // Fan out tea drops to all non-admin users
     createTeaDropsForFAQ(faq._id.toString(), question).catch((err) => logger.warn(`[faq] createTeaDropsForFAQ failed: ${(err as Error).message}`));
@@ -346,7 +361,10 @@ export const createFAQ = async (req: Request, res: Response): Promise<void> => {
 // PUT /api/faq/:id — Update an FAQ (Admin/Moderator only)
 export const updateFAQ = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   try {
-    const { question, answer, category } = req.body as { question?: string; answer?: string; category?: string };
+    const { question, answer, category, batchId, status } = req.body as {
+      question?: string; answer?: string; category?: string; batchId?: string;
+      status?: 'approved' | 'pending' | 'rejected';
+    };
 
     const faq = await FAQ.findById(req.params.id);
     if (!faq) {
@@ -357,6 +375,22 @@ export const updateFAQ = async (req: Request<{ id: string }>, res: Response): Pr
     if (question) faq.question = sanitizeHtml(question);
     if (answer) faq.answer = sanitizeHtml(answer);
     if (category) faq.category = sanitizeHtml(category);
+    if (batchId) {
+      if (!Types.ObjectId.isValid(batchId)) {
+        res.status(400).json({ message: 'Invalid batchId.' });
+        return;
+      }
+      // Allow re-assignment to any batch, including archived (admins may want to move FAQs back).
+      const batchExists = await Batch.exists({ _id: batchId });
+      if (!batchExists) {
+        res.status(400).json({ message: 'Program not found.' });
+        return;
+      }
+      faq.batchId = new Types.ObjectId(batchId);
+    }
+    if (status && ['approved', 'pending', 'rejected'].includes(status)) {
+      faq.status = status;
+    }
 
     // Recalculate embedding if any key field is updated
     if (question || answer || category) {

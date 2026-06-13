@@ -8,7 +8,8 @@ export type AdminAction =
   | 'delete_faq'
   | 'create_faq'
   | 'login'
-  | 'settings_update';
+  | 'settings_update'
+  | 'onboarding_override';
 
 // Target type enum
 export type TargetType = 'faq' | 'user' | 'system' | null;
@@ -20,6 +21,7 @@ export interface IAdminLog extends Document {
   targetId: Types.ObjectId | null;
   targetType: TargetType;
   details: string;
+  changes?: any;
 }
 
 const adminLogSchema = new MongooseSchema(
@@ -32,7 +34,7 @@ const adminLogSchema = new MongooseSchema(
     action: {
       type: String,
       required: true,
-      enum: ['approve_faq', 'reject_faq', 'edit_faq', 'delete_faq', 'create_faq', 'login', 'settings_update'] as AdminAction[],
+      enum: ['approve_faq', 'reject_faq', 'edit_faq', 'delete_faq', 'create_faq', 'login', 'settings_update', 'onboarding_override'] as AdminAction[],
     },
     targetId: {
       type: MongooseSchema.Types.ObjectId,
@@ -46,6 +48,10 @@ const adminLogSchema = new MongooseSchema(
     details: {
       type: String,
       default: '',
+    },
+    changes: {
+      type: MongooseSchema.Types.Mixed,
+      default: null,
     },
   },
   { timestamps: true }

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { login, register, getMe, getAllUsers, updateUserRole, deleteUser, updateProfile, changePassword, exportUserData, logout } from '../controllers/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
-import { loginLimiter, registerLimiter, passwordChangeLimiter } from '../utils/rateLimit.js';
-import { validateBody, registerSchema, loginSchema, updateProfileSchema, changePasswordSchema } from '../utils/validation.js';
+import { loginLimiter, registerLimiter, passwordChangeLimiter } from '../utils/auth/rateLimit.js';
+import { validateBody, registerSchema, loginSchema, updateProfileSchema, changePasswordSchema } from '../utils/auth/validation.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import crypto from 'crypto';
-import { signUploadParams, isOurCloudinaryAsset, type CloudinaryConfig } from '../utils/cloudinary.js';
+import { signUploadParams, isOurCloudinaryAsset, type CloudinaryConfig } from '../utils/http/cloudinary.js';
 
 // We don't need real Cloudinary creds for these tests — we just verify the
 // signature algorithm matches the official spec and the URL validator works.

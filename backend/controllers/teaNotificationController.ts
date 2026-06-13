@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import TeaNotification, { type TeaEventType } from '../models/TeaNotification.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Reusable tea-drop creator ────────────────────────────────────────────────
 // eventType drives the icon/message shown in the SpillTheTea UI.

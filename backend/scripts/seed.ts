@@ -10,7 +10,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import FAQ from '../models/FAQ.js';
 import User from '../models/User.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONGODB_URI = process.env.MONGODB_URI;

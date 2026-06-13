@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import User, { calculateTier } from '../models/User.js';
 import ReputationLog from '../models/ReputationLog.js';
 import Badge from '../models/Badge.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Auto Badge Awarder ─────────────────────────────────────────────────────
 
@@ -171,6 +171,38 @@ export const getLeaderboard = async (req: Request, res: Response): Promise<void>
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '10')), 50);
     const period = String(req.query.period ?? 'all'); // 'weekly' | 'monthly' | 'all'
+    // v1.65 — Spurti Points leaderboard. `?sort=sp` re-ranks the same
+    // eligible users by `sp` desc instead of by `points` desc. The
+    // response shape stays the same so the frontend can render either
+    // ranking from the same component. 'all' is the only period that
+    // makes sense for SP (it's a lifetime wallet balance, not a
+    // time-windowed action total) — passing a different `period`
+    // alongside `sort=sp` is silently coerced to 'all' below.
+    const sort = String(req.query.sort ?? '');
+
+    // SP leaderboard (v1.65) — only meaningful for period='all' since SP
+    // is a wallet balance, not a time-windowed action sum.
+    if (sort === 'sp') {
+      const users = await User.find({ isDeleted: false, isBanned: false })
+        .sort({ sp: -1, reputation: -1 })
+        .limit(limit)
+        .select('name sp reputation tier positiveBadges createdAt acceptedAnswers faqContributions');
+
+      const rank = users.map((u, i) => ({
+        rank: i + 1,
+        userId: u._id,
+        name: u.name,
+        sp: u.sp ?? 0,
+        reputation: u.reputation,
+        tier: u.tier,
+        badges: u.positiveBadges.length,
+        acceptedAnswers: u.acceptedAnswers ?? 0,
+        faqContributions: u.faqContributions ?? 0,
+        joinedAt: u.createdAt,
+      }));
+      res.json({ leaderboard: rank, total: rank.length, period: 'all', sort: 'sp' });
+      return;
+    }
 
     // For weekly/monthly, aggregate from ReputationLog; for 'all', use User.points
     if (period === 'all') {

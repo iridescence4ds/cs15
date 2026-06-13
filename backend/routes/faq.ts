@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getAllFAQs, getFAQById, getRecentFAQs, createFAQ, updateFAQ, deleteFAQ, checkFAQMatch, getPaginatedFAQs, submitFeedback, reportFAQ, getFAQHistory, createFAQSuggestion } from '../controllers/faqController.js';
 import { flagFAQ, voteReview } from '../controllers/freshnessController.js';
 import { protect, authorize } from '../middleware/auth.js';
-import { validateBody, createFAQSchema, updateFAQSchema, flagFAQSchema, voteReviewSchema } from '../utils/validation.js';
+import { validateBody, createFAQSchema, updateFAQSchema, flagFAQSchema, voteReviewSchema } from '../utils/auth/validation.js';
 
 const router = Router();
 

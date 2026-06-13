@@ -11,7 +11,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import CommunityPost from '../models/CommunityPost.js';
 import User from '../models/User.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 import readline from 'readline';
 
 interface SamplePost { title: string; body: string; status: string; answer: string | null; }

@@ -18,8 +18,8 @@
 
 import mongoose from 'mongoose';
 import { ZoomMeeting } from '../models/ZoomMeeting.js';
-import { logger } from '../utils/logger.js';
-import { recordZoomError } from '../utils/zoomHealth.js';
+import { logger } from '../utils/http/logger.js';
+import { recordZoomError } from '../utils/zoom/zoomHealth.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 

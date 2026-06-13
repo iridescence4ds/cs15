@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { adminOnly } from '../middleware/admin.js';
 import { awardPoints, getUserReputation, issueBadge, revokeBadge, getLeaderboard } from '../controllers/reputationController.js';
-import { validateBody, awardPointsSchema, issueBadgeSchema } from '../utils/validation.js';
+import { validateBody, awardPointsSchema, issueBadgeSchema } from '../utils/auth/validation.js';
 
 const router = Router();
 

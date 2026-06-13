@@ -15,7 +15,7 @@
 import { Request, Response } from 'express';
 import AiConfig, { type IAiConfig, type AIProviderType } from '../models/AiConfig.js';
 import { logAction } from './adminController.js';
-import { invalidateProviderCache } from '../utils/aiProvider.js';
+import { invalidateProviderCache } from '../utils/ai/aiProvider.js';
 
 // ─── GET /api/admin/ai/config ───────────────────────────────────────────────
 
@@ -172,7 +172,7 @@ export const testProvider = async (req: Request, res: Response): Promise<void> =
   }
 
   try {
-    const { chatWithProvider } = await import('../utils/aiProvider.js');
+    const { chatWithProvider } = await import('../utils/ai/aiProvider.js');
     await chatWithProvider(provider as AIProviderType, [{ role: 'user', content: 'ping' }]);
     res.json({ ok: true, message: 'Connection successful' });
   } catch (err: any) {

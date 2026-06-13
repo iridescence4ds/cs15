@@ -27,7 +27,7 @@ dotenv.config({ path: '.env.local' });
 
 import mongoose from 'mongoose';
 import User from '../models/User.js';
-import { encrypt, decrypt } from '../utils/crypto.js';
+import { encrypt, decrypt } from '../utils/auth/crypto.js';
 
 // ─── CLI args ────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ async function migrateTokens(): Promise<void> {
 
   let masterKey: string;
   try {
-    masterKey = (await import('../utils/crypto.js')).getMasterKey();
+    masterKey = (await import('../utils/auth/crypto.js')).getMasterKey();
   } catch {
     console.error('[migrateZoomTokens] JWT_SECRET is not set or too short — cannot encrypt tokens');
     process.exit(1);

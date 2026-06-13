@@ -11,7 +11,9 @@ export type NotificationType =
   | 'new_question'
   | 'upvote'
   | 'downvote'
-  | 'accepted_answer';
+  | 'accepted_answer'
+  // ── Session Support (experimental — additively added) ─────────
+  | 'support';           // a session-support ticket the user owns was updated
 
 export interface INotification extends Document {
   recipient: Types.ObjectId;
@@ -39,6 +41,8 @@ const notificationSchema = new MongooseSchema(
         // ── Text Bank events ─────────────────────────────────────
         'question_answered', 'new_question',
         'upvote', 'downvote', 'accepted_answer',
+        // ── Session Support (experimental) ──────────────────────
+        'support',
       ] as NotificationType[],
       required: true,
     },

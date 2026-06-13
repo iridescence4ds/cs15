@@ -6,7 +6,7 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import CommunityPost from '../models/CommunityPost.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 
 async function main() {
   if (!process.env.MONGODB_URI) {

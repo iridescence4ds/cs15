@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema as MongooseSchema, Types } from 'mongoose';
+import { moderateText } from '../config/moderationEngine.js';
 
 // ─── Reply sub-schema (nested inside comments) ──────────────────────────────────
 const replySchema = new MongooseSchema(
@@ -16,6 +17,14 @@ const replySchema = new MongooseSchema(
   },
   { _id: true, timestamps: true }
 );
+
+// Soft-censor the reply body before persisting (catches leetspeak + spaced-out variants).
+replySchema.pre('save', function (next) {
+  if (this.isModified('body') && typeof this.body === 'string') {
+    this.body = moderateText(this.body);
+  }
+  next();
+});
 
 // ─── Comment sub-schema ─────────────────────────────────────────────────────────
 const commentSchema = new MongooseSchema(
@@ -43,6 +52,15 @@ const commentSchema = new MongooseSchema(
   },
   { timestamps: true }
 );
+
+// Soft-censor the comment body before persisting. Mongoose fires this hook
+// on each modified subdoc when the parent CommunityPost calls .save().
+commentSchema.pre('save', function (next) {
+  if (this.isModified('body') && typeof this.body === 'string') {
+    this.body = moderateText(this.body);
+  }
+  next();
+});
 
 // ─── Enums ─────────────────────────────────────────────────────────────────────
 export type CommunityPostStatus = 'answered' | 'unanswered';
@@ -299,6 +317,19 @@ const communityPostSchema = new MongooseSchema(
   },
   { timestamps: true }
 );
+
+// Soft-censor the title and body before persisting. Mongoose fires this
+// hook on every .save() — covers createPost, addComment (parent save
+// after pushing a subdoc), updateComment, and any future write path.
+communityPostSchema.pre('save', function (next) {
+  if (this.isModified('title') && typeof (this as { title?: unknown }).title === 'string') {
+    (this as { title: string }).title = moderateText((this as { title: string }).title);
+  }
+  if (this.isModified('body') && typeof (this as { body?: unknown }).body === 'string') {
+    (this as { body: string }).body = moderateText((this as { body: string }).body);
+  }
+  next();
+});
 
 // Text index for keyword search
 communityPostSchema.index({ title: 'text', body: 'text' });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FAQItem, getQuestionTitle, getAnswerText, formatDate, getCategoryIcon, formatCategoryName, TrustBadge } from './faqUtils';
 import ReportFAQButton from './ReportFAQButton';
-import FreshnessBadge from '../ui/FreshnessBadge';
+import FreshnessBadge from '../faq/FreshnessBadge';
 
 interface QuestionDetailProps {
   item: FAQItem;

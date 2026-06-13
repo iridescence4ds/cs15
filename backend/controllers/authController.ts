@@ -5,9 +5,9 @@ import User, { IUser, UserRole } from '../models/User.js';
 import CommunityPost from '../models/CommunityPost.js';
 import Notification from '../models/Notification.js';
 import RevokedToken from '../models/RevokedToken.js';
-import { registerSchema, loginSchema, changePasswordSchema } from '../utils/validation.js';
-import { sanitizeHtml } from '../utils/sanitize.js';
-import { logger } from '../utils/logger.js';
+import { registerSchema, loginSchema, changePasswordSchema } from '../utils/auth/validation.js';
+import { sanitizeHtml } from '../utils/http/sanitize.js';
+import { logger } from '../utils/http/logger.js';
 
 // Helper: Generates a signed JWT using the user's ID, embedding a unique
 // `jti` so the token can be server-side revoked via RevokedToken.
@@ -44,6 +44,12 @@ interface UserResponse {
   email: string;
   role: UserRole;
   avatar?: { url: string; publicId: string };
+  welcomePackageOnboarded?: boolean;
+  orientationCompleted?: boolean;
+  projectAssigned?: string;
+  mentorAssigned?: string;
+  projectAssignedAt?: Date;
+  projectSelectionLocked?: boolean;
 }
 
 // POST /api/auth/register
@@ -71,6 +77,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
+      welcomePackageOnboarded: user.welcomePackageOnboarded,
+      orientationCompleted: user.orientationCompleted,
+      projectAssigned: user.projectAssigned,
+      mentorAssigned: user.mentorAssigned,
+      projectAssignedAt: user.projectAssignedAt,
+      projectSelectionLocked: user.projectSelectionLocked,
     };
 
     res.status(201).json({ token, user: userResponse });
@@ -109,6 +121,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
+      welcomePackageOnboarded: user.welcomePackageOnboarded,
+      orientationCompleted: user.orientationCompleted,
+      projectAssigned: user.projectAssigned,
+      mentorAssigned: user.mentorAssigned,
+      projectAssignedAt: user.projectAssignedAt,
+      projectSelectionLocked: user.projectSelectionLocked,
     };
 
     res.json({ token, user: userResponse });
@@ -132,6 +150,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     email: req.user.email,
     role: req.user.role,
     avatar: req.user.avatar,
+    welcomePackageOnboarded: (req.user as any).welcomePackageOnboarded,
+    orientationCompleted: (req.user as any).orientationCompleted,
+    projectAssigned: (req.user as any).projectAssigned,
+    mentorAssigned: (req.user as any).mentorAssigned,
+    projectAssignedAt: (req.user as any).projectAssignedAt,
+    projectSelectionLocked: (req.user as any).projectSelectionLocked,
   };
 
   res.json({ user: userResponse });
@@ -196,7 +220,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           // Lazy import — only load cloudinary utils if we actually need to
           // validate an avatar. Keeps /api/auth/profile responsive when no
           // avatar is being changed.
-          const { isOurCloudinaryAsset, getCloudinaryConfig } = await import('../utils/cloudinary.js');
+          const { isOurCloudinaryAsset, getCloudinaryConfig } = await import('../utils/http/cloudinary.js');
           const cfg = getCloudinaryConfig();
           if (!isOurCloudinaryAsset(avatar.url, cfg.cloudName)) {
             res.status(400).json({ message: 'avatar.url must be a valid Cloudinary URL for this account.' });
@@ -222,6 +246,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       email: updated.email,
       role: updated.role,
       avatar: updated.avatar,
+      welcomePackageOnboarded: (updated as any).welcomePackageOnboarded,
+      orientationCompleted: (updated as any).orientationCompleted,
+      projectAssigned: (updated as any).projectAssigned,
+      mentorAssigned: (updated as any).mentorAssigned,
+      projectAssignedAt: (updated as any).projectAssignedAt,
+      projectSelectionLocked: (updated as any).projectSelectionLocked,
     };
 
     res.json({ message: 'Profile updated.', user: userResponse });

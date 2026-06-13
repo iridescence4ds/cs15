@@ -2,13 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuthModal, useAuthGate } from '../../context/AuthModalContext';
+import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import { buildTransformedUrl } from '../../hooks/useCloudinaryUpload';
-import NotificationBell from '../../components/ui/NotificationBell';
-import ThemeToggle from '../../components/ui/ThemeToggle';
+import NotificationBell from '../../components/notifications/NotificationBell';
+import SpurtiChip from './SpurtiChip';
 
-const navItems = [
+// v1.65.1 — `xlOnly?: true` flags a nav tab as hidden below the xl
+// breakpoint (1280px). Used by Golden Ticket when the center
+// pill is already at capacity from the other tabs. Mobile drawer
+// shows all items regardless of xlOnly.
+type NavItem = { label: string; to: string; xlOnly?: true };
+
+const navItems: NavItem[] = [
   { label: 'Home', to: '/' },
   { label: 'FAQ', to: '/faq' },
+  { label: 'Welcome Package', to: '/welcome' },
   { label: 'Community', to: '/community' },
   { label: 'Leaderboard', to: '/leaderboard' },
 ];
@@ -23,7 +31,55 @@ function getAvatarColor(name?: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+
+type Theme = 'light' | 'dark' | 'system';
+function getSystemTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(theme: Theme) {
+  const t = theme === 'system' ? getSystemTheme() : theme;
+  document.documentElement.setAttribute('data-theme', t);
+  try {
+    localStorage.setItem('theme', theme);
+  } catch {}
+}
+
 export default function Navbar() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system';
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark' || stored === 'light') return stored;
+    return 'system';
+  });
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        const next = (e.newValue as Theme) || 'system';
+        setTheme(next);
+        applyTheme(next);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const listener = () => {
+      if (theme === 'system') {
+        document.documentElement.setAttribute('data-theme', mql.matches ? 'dark' : 'light');
+      }
+    };
+    mql.addEventListener('change', listener);
+    return () => mql.removeEventListener('change', listener);
+  }, [theme]);
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+  };
+
   const { user, isAuthenticated, logout } = useAuth();
   const { openModal } = useAuthModal();
   const navigate = useNavigate();
@@ -33,6 +89,28 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const gate = useAuthGate();
+  // Support link is only rendered when the experimental feature is on.
+  const supportOn = useFeatureFlag('sessionSupport');
+  // v1.65.1 — Golden Ticket is its own experimental feature flag.
+  // Hidden from the nav when the admin has it off (the /golden
+  // route's FeatureGate surfaces the same "this feature is
+  // currently off" panel if a user types the URL directly).
+  const goldenOn = useFeatureFlag('goldenTicket');
+  // v1.65.1 — Golden Ticket link. Shown only at xl: because the
+  // center pill (Home/FAQ/Community/Leaderboard + the sessionSupport
+  // tabs Support/Golden) is already at capacity at lg. At xl there's
+  // enough room; below that Golden is reachable via /golden and
+  // any admin nudge in the inbox.
+  const goldenExtras: NavItem[] = goldenOn
+    ? [{ label: 'Golden', to: '/golden', xlOnly: true as const }]
+    : [];
+  let allNavItems: NavItem[] = supportOn
+    ? [...navItems, { label: 'Support', to: '/support' }, ...goldenExtras]
+    : navItems;
+
+  if (user?.role === 'admin') {
+    allNavItems = allNavItems.filter(item => item.label !== 'Welcome Package');
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -73,158 +151,202 @@ export default function Navbar() {
   const isCommunityActive = location.pathname === '/community';
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-[400ms] ease-smooth
+    <header className="fixed top-2 sm:top-4 left-0 right-0 z-50 px-4 transition-all duration-[400ms] ease-smooth flex justify-center">
+      <div className={`w-full max-w-[1200px] px-4 sm:px-6 h-14 sm:h-16 grid grid-cols-[1fr_auto_1fr] items-center relative rounded-full transition-all duration-[400ms]
         ${scrolled
-          ? 'bg-bg/82 backdrop-blur-[20px] saturate-[1.8] border-b border-black/[0.04] shadow-subtle'
-          : 'bg-transparent border-b border-transparent'
+          ? 'bg-[rgb(var(--bg-card-rgb)_/_0.75)] backdrop-blur-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[rgb(var(--border-rgb)_/_0.5)] saturate-[1.5]'
+          : 'bg-[rgb(var(--bg-card-rgb)_/_0.4)] backdrop-blur-[12px] border border-[rgb(var(--border-rgb)_/_0.2)] shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
         }`}
-    >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative">
+      >
 
         {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-2.5 group flex-shrink-0">
-          <div className="w-9 h-9 rounded-[10px] border-2 border-ink text-ink flex items-center justify-center transition-transform duration-300 group-hover:rotate-[-6deg]">
+        <div className="flex items-center justify-self-start">
+          <NavLink to="/" className="flex items-center gap-2.5 group w-fit">
+          <div className="w-9 h-9 rounded-[10px] border-2 border-ink text-ink flex items-center justify-center transition-transform duration-300 group-hover:rotate-[-6deg] bg-[rgb(var(--bg-card-rgb)_/_0.5)]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
           </div>
-          <span className="font-serif text-xl tracking-tight text-ink">
+          <span className="font-sans font-bold tracking-tight text-ink text-xl">
             Yaksha FAQ
           </span>
-        </NavLink>
-
-        {/* Center Pill Group (Desktop) */}
-        <div className="hidden lg:flex items-center gap-1.5 px-1.5 py-[5px] rounded-full border-[1.5px] border-border bg-card/50 backdrop-blur-[12px] absolute left-1/2 -translate-x-1/2">
-          {navItems.map(({ label, to }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `nav-pill ${isActive ? 'active' : ''}`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
+          </NavLink>
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Center Pill Group (Desktop) */}
+        <div className="justify-self-center">
+          <div className="hidden lg:flex items-center justify-center gap-1.5 px-1.5 py-[5px] rounded-full border-[1.5px] border-[rgb(var(--border-rgb)_/_0.6)] bg-[rgb(var(--bg-card-rgb)_/_0.85)] backdrop-blur-[24px] shadow-md transition-all duration-300 hover:bg-[rgb(var(--bg-card-rgb)_/_0.95)] z-50">
+            {allNavItems.map(({ label, to, xlOnly }) => {
+            const isWelcome = to === '/welcome';
+            const needsPulse = isWelcome && user && !user.orientationCompleted;
 
-        {/* Theme toggle — always visible, to the left of the auth/notif block */}
-        <ThemeToggle />
-
-        {/* Unauthenticated — Sign in (text) + Get started (filled) */}
-        {!isAuthenticated && (
-          <div className="hidden lg:flex items-center gap-2">
-            <button
-              onClick={() => openModal('signin')}
-              className="px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => openModal('register')}
-              className="btn-base btn-primary text-sm"
-            >
-              Get started
-            </button>
-          </div>
-        )}
-
-        {/* Authenticated */}
-        {isAuthenticated && (
-          <>
-            {/* Ask Question button — green pill */}
-            <button
-              onClick={() => navigate('/community?ask=true')}
-              className="hidden lg:inline-flex btn-base btn-primary text-xs"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Ask Question
-            </button>
-
-            <div className="hidden lg:block w-px h-6 bg-border mx-1" />
-
-            <NotificationBell />
-
-            {/* User Avatar + Dropdown */}
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
-                className="flex items-center gap-1.5 cursor-pointer group"
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/'}
+                className={({ isActive }) =>
+                  `nav-pill relative ${isActive ? 'active' : ''} ${xlOnly ? 'hidden xl:inline-flex' : ''} ${needsPulse && !isActive ? 'animate-pulse text-[rgb(var(--accent-rgb))] shadow-[inset_0_0_15px_rgb(var(--accent-rgb)_/_0.15)] bg-[rgb(var(--accent-rgb)_/_0.05)]' : ''}`
+                }
               >
-                {avatarSrc ? (
-                  <img
-                    src={avatarSrc}
-                    alt={user?.name ? `${user.name} avatar` : 'avatar'}
-                    className="w-9 h-9 rounded-full object-cover ring-2 ring-card transition-transform duration-200 group-hover:scale-105"
-                    loading="lazy"
-                    />
-                    ) : (
-                    <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-accent-text text-sm font-semibold ring-2 ring-card transition-transform duration-200 group-hover:scale-105"
-                    style={{ backgroundColor: avatarColor }}
-                  >
-                    {initials}
-                  </div>
+                {({ isActive }) => (
+                  <>
+                    {label}
+                    {needsPulse && !isActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-[rgb(var(--accent-rgb))] rounded-full animate-ping" />}
+                  </>
                 )}
-                <svg
-                  width="12" height="12" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2.5"
-                  className={`hidden md:block text-ink-soft transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`}
-                >
-                  <polyline points="6 9 12 15 18 9"/>
+              </NavLink>
+            );
+          })}
+          </div>
+        </div>
+
+        {/* Right side actions */}
+        <div className="flex items-center justify-self-end gap-2 sm:gap-3">
+
+          {/* Unauthenticated — Sign in (text) + Get started (filled) */}
+          {!isAuthenticated && (
+            <div className="hidden lg:flex items-center gap-2">
+              <button
+                onClick={() => openModal('signin')}
+                className="px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => openModal('register')}
+                className="btn-base btn-primary text-sm"
+              >
+                Get started
+              </button>
+            </div>
+          )}
+
+          {/* Authenticated Utility Group */}
+          {isAuthenticated && (
+            <div className="flex items-center gap-3 lg:gap-4">
+              {/* Ask Question button */}
+              <button
+                onClick={() => navigate('/community?ask=true')}
+                className="hidden lg:inline-flex btn-base btn-primary text-xs"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
+                Ask Question
               </button>
 
-              {profileOpen && (
-                <div className="absolute right-0 top-12 w-48 bg-card rounded-xl border border-border shadow-float py-2 animate-fade-in z-50">
-                  <div className="px-4 py-2 border-b border-border/50">
-                    <p className="text-sm font-medium text-ink">{user?.name || 'User'}</p>
-                    <p className="text-xs text-ink-faint">{user?.email || ''}</p>
-                  </div>
-                  {(user?.role === 'admin' || user?.role === 'moderator') && (
-                    <button
-                      onClick={() => { navigate('/admin'); setProfileOpen(false); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
-                    >
-                      Admin Dashboard
-                    </button>
-                  )}
-                  <button
-                    onClick={() => { navigate('/account'); setProfileOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
-                  >
-                    Account
-                  </button>
-                  <button
-                    onClick={() => { navigate('/saved'); setProfileOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
-                  >
-                    Saved
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+              <div className="hidden lg:block w-px h-6 bg-border" />
 
-        {/* Mobile hamburger */}
-        <button
+              <div className="flex items-center gap-2">
+                {/* Spurti Points chip */}
+                <SpurtiChip />
+
+                <NotificationBell />
+
+                {/* User Avatar + Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
+                    className="flex items-center gap-1.5 cursor-pointer group"
+                  >
+                    {avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt={user?.name ? `${user.name} avatar` : 'avatar'}
+                        className="w-9 h-9 rounded-full object-cover ring-2 ring-card transition-transform duration-200 group-hover:scale-105"
+                        loading="lazy"
+                        />
+                        ) : (
+                        <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-accent-text text-sm font-semibold ring-2 ring-card transition-transform duration-200 group-hover:scale-105"
+                        style={{ backgroundColor: avatarColor }}
+                      >
+                        {initials}
+                      </div>
+                    )}
+                    <svg
+                      width="12" height="12" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5"
+                      className={`hidden md:block text-ink-soft transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute right-0 top-[3.25rem] w-56 bg-[rgb(var(--bg-card-rgb)_/_0.85)] backdrop-blur-[24px] rounded-2xl border border-[rgb(var(--border-rgb)_/_0.5)] shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-2 animate-fade-in z-50">
+                      <div className="px-4 py-2 border-b border-border/50">
+                        <p className="text-sm font-medium text-ink">{user?.name || 'User'}</p>
+                        <p className="text-xs text-ink-faint">{user?.email || ''}</p>
+                      </div>
+                      {(user?.role === 'admin' || user?.role === 'moderator') && (
+                        <button
+                          onClick={() => { navigate('/admin'); setProfileOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
+                        >
+                          Admin Dashboard
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { navigate('/account'); setProfileOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
+                      >
+                        Account
+                      </button>
+                      
+                      <button
+                        onClick={() => { navigate('/saved'); setProfileOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
+                      >
+                        Saved
+                      </button>
+
+                      <div className="px-4 py-2.5 border-b border-border/30 cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-faint mb-2">Appearance</p>
+                        <div className="flex bg-mist rounded-lg p-1 gap-1">
+                          <button
+                            onClick={() => handleThemeChange('light')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'light' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+                            Light
+                          </button>
+                          <button
+                            onClick={() => handleThemeChange('dark')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'dark' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" /></svg>
+                            Dark
+                          </button>
+                          <button
+                            onClick={() => handleThemeChange('system')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'system' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            System
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors mt-1"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile hamburger */}
+          <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="lg:hidden flex w-9 h-9 items-center justify-center rounded-[10px] hover:bg-black/[0.04] transition-colors"
             aria-label="Toggle menu"
@@ -259,7 +381,7 @@ export default function Navbar() {
         }}
       >
         <div className="px-6 py-4 flex flex-col gap-1">
-          {navItems.map(({ label, to }) => (
+          {allNavItems.map(({ label, to }) => (
             <NavLink
               key={to}
               to={to}

@@ -3,10 +3,17 @@
 ## Contents
 
 - [Architecture Overview](ARCHITECTURE.md) — Complete codebase map: routes, controllers, models, services, utils, frontend pages, middleware, patterns, environment variables
-- [Pipelines](PIPELINES.md) — All automated pipelines: auto-answer, FAQ audit, search, and Zoom ingestion; includes flows, configuration, and API endpoints
+- [Pipelines](PIPELINES.md) — All automated pipelines: auto-answer, FAQ audit, FAQ freshness, search, Zoom ingestion, support escalation; includes flows, configuration, and API endpoints
 - [MCP Integration](MCP.md) — Model Context Protocol: Hermes MCP client setup, CodeGraphContext MCP server tools, adding new servers, troubleshooting
 - [AI Provider System](AI_PROVIDERS.md) — Per-pipeline AI provider configuration, chatWithConfig usage, provider resolution, adding new providers
 - [OpenAPI Specification](openapi.yaml) — Full REST API reference in Swagger/OpenAPI 3.0 format
+- [Batch Management Plan](BATCH_MANAGEMENT_PLAN.md) — Cohort-scoped FAQ + first-class `Category` model + guest portal design
+- [Public FAQ Plan](PUBLIC_FAQ_PLAN.md) — Anonymous-friendly FAQ portal: routes, controllers, page redesign
+- [Schema-Driven Context Plan](SCHEMA_DRIVEN_CONTEXT_PLAN.md) — Admin-editable per-support-category field schema, dynamic frontend inputs
+- [Backup & Restore](BACKUP.md) — MongoDB dump/restore workflow for the live data
+- [Wire Protocol](wire.md) — Low-level API event shapes
+- [Issue Tracking](issues.md) — Open / resolved P0 + P1 issues
+- [Context (legacy)](context.md) — Original project brief, preserved for reference
 
 ## Project Overview
 

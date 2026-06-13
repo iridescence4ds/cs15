@@ -16,10 +16,10 @@
  */
 
 import mongoose from 'mongoose';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { resolveProviderAsync } from '../utils/aiProvider.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { resolveProviderAsync } from '../utils/ai/aiProvider.js';
 import { searchKnowledge } from './knowledgeBase.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 export interface RagSource {
   /** Stable id — the client uses this as a React key and to link out. */

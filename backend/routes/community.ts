@@ -2,23 +2,29 @@ import { Router } from 'express';
 import {
   getAllPosts,
   getPostById,
+} from '../controllers/postReadsController.js';
+import {
   createPost,
   toggleUpvote,
+  deletePost,
+  reportPost,
+} from '../controllers/postMutationsController.js';
+import {
   resolvePost,
   requestExpertHelp,
-  deletePost,
   convertCommunityPostToFAQ,
-  reportPost,
-  getSolvedPosts,
   setPostDNA,
   setPostTags,
+} from '../controllers/postLifecycleController.js';
+import {
   objectToPromotion,
   confirmSpam,
   hidePost,
   unhidePost,
   lockPost,
   unlockPost,
-} from '../controllers/postController.js';
+} from '../controllers/postModerationController.js';
+import { getSolvedPosts } from '../controllers/postReadsController.js';
 import { checkDuplicateController } from '../controllers/postDuplicateController.js';
 import {
   getAnswersList,
@@ -37,7 +43,7 @@ import { getBookmarks, toggleBookmark } from '../controllers/bookmarkController.
 import { getCommunityStats } from '../controllers/communityStatsController.js';
 import { getRelatedForPost } from '../controllers/relatedController.js';
 import { protect, authorize } from '../middleware/auth.js';
-import { validateBody, createPostSchema, addCommentSchema, resolvePostSchema, reportPostSchema, checkDuplicateSchema } from '../utils/validation.js';
+import { validateBody, createPostSchema, addCommentSchema, resolvePostSchema, reportPostSchema, checkDuplicateSchema } from '../utils/auth/validation.js';
 
 const router = Router();
 

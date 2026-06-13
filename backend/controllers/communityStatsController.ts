@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import CommunityPost from '../models/CommunityPost.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 /** GET /api/community/stats — public community health metrics */
 export async function getCommunityStats(_req: Request, res: Response): Promise<void> {

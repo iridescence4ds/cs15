@@ -22,20 +22,30 @@ import zoomRoutes from './routes/zoom.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import askAiRoutes from './routes/askAi.js';
 import uploadRoutes from './routes/upload.js';
-import { ingestFrontendLog } from './utils/fileLogger.js';
-import { logger } from './utils/logger.js';
-import { requestLogger } from './utils/requestLogger.js';
+import publicFaqRoutes from './routes/publicFaq.js';
+import batchRoutes from './routes/batch.js';
+import supportRoutes from './routes/support.js';
+import featureFlagRoutes from './routes/featureFlag.js';
+import welcomeRoutes from './routes/welcomeRoutes.js';
+import adminWelcomeRoutes from './routes/adminWelcomeRoutes.js';
+import adminMentorRoutes from './routes/adminMentorRoutes.js';
+import adminTimelineRoutes from './routes/adminTimelineRoutes.js';
+import { adminRouter as appSettingsAdminRouter, publicRouter as appSettingsPublicRouter } from './routes/appSettings.js';
+import { ingestFrontendLog } from './utils/http/fileLogger.js';
+import { logger } from './utils/http/logger.js';
+import { requestLogger } from './utils/http/requestLogger.js';
 import { startEscalationScheduler, stopEscalationScheduler } from './controllers/escalationController.js';
 import { runScheduledAutoAnswer, stopAutoAnswerScheduler } from './controllers/autoAnswerController.js';
 import { runScheduledFAQAudit, stopFAQAuditScheduler } from './controllers/faqAuditController.js';
 import { retryFailedMeetings } from './services/retryService.js';
 import { runFreshnessCheck } from './controllers/freshnessController.js';
 import { runPromotionCycle } from './services/promotionService.js';
-import { getMetrics } from './utils/metrics.js';
-import { runWithContext } from './utils/requestContext.js';
+import { getMetrics } from './utils/http/metrics.js';
+import { runWithContext } from './utils/http/requestContext.js';
 import { flushSearchLogs } from './controllers/searchController.js';
-import { jobQueue } from './utils/jobQueue.js';
-import { getCloudinaryConfig } from './utils/cloudinary.js';
+import { jobQueue } from './utils/http/jobQueue.js';
+import { getCloudinaryConfig } from './utils/http/cloudinary.js';
+import { recomputePopularity } from './controllers/publicFaqController.js';
 import * as Sentry from '@sentry/node';
 import { expressIntegration } from '@sentry/node';
 
@@ -121,8 +131,29 @@ app.use(morgan('dev')); // Logs incoming HTTP requests to the console
 // 4. Body Parsing
 app.use(express.json()); // Parses incoming JSON payloads in the request body
 
+// 4b. Minimal cookie parser — only needed for the public FAQ page's
+// guest-id cookie. Avoids adding cookie-parser as a runtime dep.
+app.use((req: Request, _res: Response, next: (e?: unknown) => void) => {
+  const header = req.headers.cookie;
+  if (!header) { next(); return; }
+  const jar: Record<string, string> = {};
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (!k) continue;
+    try { jar[k] = decodeURIComponent(v); } catch { /* malformed — skip */ }
+  }
+  (req as Request & { cookies: Record<string, string> }).cookies = jar;
+  next();
+});
+
 // Route to receive frontend logs and write them to main_log.txt
 app.post('/api/log', ingestFrontendLog);
+
+// Serve static uploads
+app.use('/uploads', express.static('uploads'));
 
 // 5. Mount API Routes
 app.use('/api/auth', authRoutes);
@@ -141,6 +172,20 @@ app.use('/api/zoom', zoomRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/ask-ai', askAiRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/public', publicFaqRoutes);
+app.use('/api/batches', batchRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/feature-flags', featureFlagRoutes);
+app.use('/api/welcome', welcomeRoutes);
+app.use('/api/admin/welcome', adminWelcomeRoutes);
+app.use('/api/admin/mentors', adminMentorRoutes);
+app.use('/api/admin/timeline-steps', adminTimelineRoutes);
+
+// v1.65 — Global app settings (Golden Ticket cooldown, penalty
+// multiplier). Two routers: admin-only at /api/admin/settings and
+// public-safe subset at /api/public/settings.
+app.use('/api/admin/settings',  appSettingsAdminRouter);
+app.use('/api/public/settings', appSettingsPublicRouter);
 
 // 6. Health Check Endpoint
 // Useful for deployment platforms (like Vercel/AWS) to verify the server is alive
@@ -166,7 +211,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 // 6b. Warm-up endpoint — pre-loads the ML embedding model so first real request isn't slow
 app.post('/api/warm', async (_req: Request, res: Response) => {
   try {
-    await import('./utils/embeddings.js').then(m => m.warmEmbedder());
+    await import('./utils/ai/embeddings.js').then(m => m.warmEmbedder());
     res.json({ status: 'warmed' });
   } catch {
     res.status(500).json({ status: 'warm failed' });
@@ -300,6 +345,19 @@ if (process.env.NODE_ENV !== 'production') {
     const freshnessInterval = setInterval(() => runFreshnessCheck().catch((e: Error) => logger.error(`Freshness check: ${e.message}`)), 24 * 60 * 60 * 1000);
     runFreshnessCheck().catch((e: Error) => logger.error(`Initial freshness check: ${e.message}`));
 
+    // Public FAQ popularity recompute — every 5 min, idempotent. Aggregates
+    // GuestEvent metrics into the FAQ document and re-derives popularityScore
+    // for any FAQ whose score is older than the tick.
+    const PUBLIC_RECOMPUTE_MS = 5 * 60 * 1000;
+    const popularityInterval = setInterval(() => {
+      recomputePopularity().catch((e: Error) => logger.error(`[publicFaq] recompute: ${e.message}`));
+    }, PUBLIC_RECOMPUTE_MS);
+    // First pass 15s after boot — let MongoDB connect, don't fight the
+    // initial auto-answer / promotion cycles.
+    setTimeout(() => {
+      recomputePopularity().catch((e: Error) => logger.error(`[publicFaq] initial recompute: ${e.message}`));
+    }, 15_000);
+
     // Daily retention policy — cleans old SearchLog, Notification, FreshReviewLog, ModerationLog, AdminLog records
     const RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const runRetention = async () => {
@@ -329,6 +387,7 @@ if (process.env.NODE_ENV !== 'production') {
       clearInterval(freshnessInterval);
       clearInterval(retentionInterval);
       clearInterval(retryInterval);
+      clearInterval(popularityInterval);
       stopEscalationScheduler();
       stopAutoAnswerScheduler();
       stopFAQAuditScheduler();

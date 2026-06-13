@@ -31,13 +31,13 @@ shamagama/
 │   │   └── search.test.ts
 │   ├── config/
 │   │   └── db.ts               # Lazy MongoDB connection (cached across requests)
-│   ├── controllers/            # Request handlers (25 files)
+│   ├── controllers/            # Request handlers (44 files)
 │   ├── middleware/
 │   │   ├── admin.ts            # adminOnly — RBAC guard
 │   │   ├── auth.ts             # protect + authorize()
 │   │   └── authShared.ts       # verifyAndLoadUser (shared auth logic)
-│   ├── models/                 # Mongoose schemas (14 files)
-│   ├── routes/                 # Express routers (17 files)
+│   ├── models/                 # Mongoose schemas (27 files)
+│   ├── routes/                 # Express routers (21 files)
 │   ├── scripts/                # One-time migrations, seeders, utilities
 │   ├── services/               # Business logic services
 │   │   ├── aiClient.ts         # AI API client (Anthropic/OpenAI/XAI/MiniMax)
@@ -151,6 +151,11 @@ All routes are mounted in `server.ts`. Admin routes are prefixed `/api/admin`.
 | `faq.ts` | `/api/faq` | public + protected | FAQ CRUD, check-match, flag, vote-review |
 | `community.ts` | `/api/community` | public + protected | Posts, comments, bookmarks, review-queue |
 | `search.ts` | `/api/search` | public | Hybrid search, suggest, trending |
+| `support.ts` | `/api/support` | protected | Session support: troubleshoot, requests, follow-ups, status, guidance, analytics, categories, golden ticket endpoints |
+| `publicFaq.ts` | `/api/public` | public | Anonymous FAQ browse (recent, popular, categories, detail, by-batch) |
+| `batch.ts` | `/api/batches` | public + protected | Batch list, current batch, FAQ/category scoping |
+| `appSettings.ts` | `/api/app-settings` | public + admin | Read-only public settings (cooldown hours etc.) + admin CRUD |
+| `featureFlag.ts` | `/api/feature-flags` | protected | List + toggle experimental features |
 | `admin.ts` | `/api/admin` | admin only | Dashboard stats, user management, reports |
 | `adminAutoAnswer.ts` | `/api/admin` | admin only | Auto-answer queue + review |
 | `adminAudit.ts` | `/api/admin` | admin only | FAQ audit stats + results |
@@ -180,38 +185,92 @@ router.get('/queue', getQueue);
 
 ## 3. Backend — Controllers
 
-Each controller handles a set of related operations. Controllers are imported by routes and called with `(req, res)`.
+Each controller handles a set of related operations. Controllers are imported by routes and called with `(req, res)`. The support system and community posts are split into focused sub-controllers (modularity refactor, see [issues.md](issues.md)).
+
+### Auth & users
 
 | Controller | Responsibility |
 |---|---|
 | `authController.ts` | Register, login, getMe, updateProfile, changePassword, deleteUser (soft), exportUserData |
+| `adminController.ts` | Dashboard stats, user/FAQ/report management |
+| `admin2faController.ts` | Admin two-factor authentication (TOTP enroll + verify) |
+
+### FAQ
+
+| Controller | Responsibility |
+|---|---|
 | `faqController.ts` | CRUD, check-match (duplicate), flag, vote-review |
-| `postController.ts` | Posts CRUD, upvotes (with reputation farming fix), resolve, tags, report |
+| `faqAuditController.ts` | FAQ audit scheduler + stats |
+| `freshnessController.ts` | FAQ freshness: flag-outdated, peer vote, review queue, moderator escalation + dismissal, `runFreshnessCheck` cron |
+
+### Community posts (split into 5 sub-controllers + core)
+
+| Controller | Responsibility |
+|---|---|
+| `postCore.ts` | Shared helpers — `buildCommentTree`, Express `Request` augmentation |
+| `postReadsController.ts` | Get post, list posts, related |
+| `postMutationsController.ts` | Create / edit / vote / resolve |
+| `postLifecycleController.ts` | Open / close / reopen |
+| `postModerationController.ts` | Report, take-down, restore |
+| `postDuplicateController.ts` | AI duplicate detection |
 | `commentController.ts` | Comment CRUD, verify, accept-answer, edit, delete |
 | `commentVoteController.ts` | Comment upvotes/downvotes (reverses reputation on removal) |
 | `bookmarkController.ts` | Toggle bookmark, list bookmarks |
-| `searchController.ts` | Hybrid semantic + keyword search, suggest, trending, search log buffering |
 | `communitySearchController.ts` | Community-only search |
-| `autoAnswerController.ts` | Auto-answer scheduler + review endpoints |
-| `faqAuditController.ts` | FAQ audit scheduler + stats |
-| `zoomAuthController.ts` | Per-user Zoom OAuth: connect, callback, disconnect, status, backfill |
-| `zoomController.ts` | Webhook handler, manual upload, progress polling, admin CRUD |
-| `moderationController.ts` | Ban, suspend, warn, soft-delete, moderation logs |
-| `reputationController.ts` | Points, badges, leaderboard |
-| `notificationController.ts` | List, mark read, delete notifications |
-| `teaNotificationController.ts` | SpillTheTea notification creation + delivery |
-| `adminController.ts` | Dashboard stats, user/FAQ/report management |
-| `aiPromotionController.ts` | Expert promotion, promote to FAQ |
-| `escalationController.ts` | Escalation handling |
-| `freshnessController.ts` | Peer-vote freshness system |
-| `analyticsController.ts` | Search analytics, unresolved query tracking |
-| `unresolvedSearchController.ts` | Unresolved search query management |
 | `communityStatsController.ts` | Community stats |
-| `relatedController.ts` | Related posts/questions |
-| `postDuplicateController.ts` | Duplicate post check |
+| `escalationController.ts` | Community post escalation handling (scheduler) |
+
+### Search & discovery
+
+| Controller | Responsibility |
+|---|---|
+| `searchController.ts` | Hybrid semantic + keyword search, suggest, trending, search log buffering (see `routes/search.ts`) |
+| `analyticsController.ts` | Search analytics, unresolved query tracking |
+| `publicFaqController.ts` | Anonymous public FAQ browse (recent, popular, categories, detail) |
+| `batchController.ts` | Batch + Category CRUD, current-batch lookup, batch-scoped FAQ/category reads |
+
+### Pipelines
+
+| Controller | Responsibility |
+|---|---|
+| `autoAnswerController.ts` | Auto-answer scheduler + review endpoints |
+| `aiPromotionController.ts` | Expert promotion, promote to FAQ |
 | `aiController.ts` | AI config management |
 | `aiConfigController.ts` | AI configuration |
 | `knowledgeController.ts` | TranscriptKnowledge management |
+
+### Support tickets (split into 6 sub-controllers + core)
+
+| Controller | Responsibility |
+|---|---|
+| `supportCore.ts` | Shared helpers/guards/notifications + `requireFeatureOn` |
+| `supportRequestsController.ts` | Create / list / get / self-delete support requests; submit-time Golden Ticket gate; cooldown stamp |
+| `supportFollowUpController.ts` | Add student/admin follow-ups; admin status update (resolve/reject) |
+| `supportGuidanceController.ts` | Issue-type guidance (admin-editable troubleshooting steps) |
+| `supportAnalyticsController.ts` | Support ticket analytics |
+| `supportCategoriesController.ts` | Support category + per-category context field schema CRUD |
+| `supportGoldenController.ts` | Golden Ticket (user-driven): SP balance, Escalation Queue, admin convert/award-SP |
+
+### Moderation & reputation
+
+| Controller | Responsibility |
+|---|---|
+| `moderationController.ts` | Ban, suspend, warn, soft-delete, moderation logs |
+| `reputationController.ts` | Points, badges, leaderboard |
+
+### Notifications
+
+| Controller | Responsibility |
+|---|---|
+| `notificationController.ts` | List, mark read, delete notifications |
+| `teaNotificationController.ts` | SpillTheTea notification creation + delivery |
+
+### Meta
+
+| Controller | Responsibility |
+|---|---|
+| `featureFlagController.ts` | List + toggle experimental features; cached `isFeatureEnabled` lookup |
+| `appSettingsController.ts` | App settings (e.g. `goldenCooldownHours`) — public read + admin write |
 
 ---
 
@@ -219,11 +278,14 @@ Each controller handles a set of related operations. Controllers are imported by
 
 | Model | Collection | Purpose |
 |---|---|---|
-| `User.ts` | `yaksha_faq_users` | User accounts, roles, auth, Zoom OAuth tokens |
-| `FAQ.ts` | `yaksha_faq_faqs` | FAQ entries with 768-dim embedding |
+| `User.ts` | `yaksha_faq_users` | User accounts, roles, auth, Zoom OAuth tokens, Spurti Points (`sp`), Golden cooldown provenance |
+| `FAQ.ts` | `yaksha_faq_faqs` | FAQ entries with 768-dim embedding, batch + category scoping, freshness tier + review status |
+| `Batch.ts` | `yaksha_faq_batches` | Cohort/program/term scoping for FAQs, categories, analytics |
+| `Category.ts` | `yaksha_faq_categories` | First-class category model (replaces the old free-text `FAQ.category` string) |
 | `CommunityPost.ts` | `yaksha_faq_communityposts` | Posts + embedded comments sub-schema |
 | `SearchLog.ts` | `yaksha_faq_searchlogs` | Search analytics (TTL 90 days) |
 | `Notification.ts` | `yaksha_faq_notifications` | User notifications |
+| `NotificationSettings.ts` | `yaksha_faq_notification_settings` | Per-user per-event-type notification preferences |
 | `TeaNotification.ts` | `yaksha_faq_tea_notifications` | SpillTheTea events |
 | `AdminLog.ts` | `yaksha_faq_admin_logs` | Admin action audit log |
 | `ModerationLog.ts` | `yaksha_faq_moderation_logs` | Moderation action logs |
@@ -234,8 +296,15 @@ Each controller handles a set of related operations. Controllers are imported by
 | `TranscriptKnowledge.ts` | `yaksha_faq_transcript_knowledge` | Auto-approved transcript Q&A (zero-human) |
 | `PipelineResult.ts` | `yaksha_faq_pipeline_results` | Unified pipeline result log (TTL 30 days) |
 | `AiConfig.ts` | `yaksha_faq_ai_configs` | AI provider configuration overrides |
-| `FreshReviewLog.ts` | `yaksha_faq_fresh_review_logs` | Peer-vote freshness tracking |
-| `FreshReviewVote.ts` | `yaksha_faq_fresh_review_votes` | Peer-vote votes |
+| `FreshReviewLog.ts` | `yaksha_faq_fresh_review_logs` | FAQ freshness flag/vote event log |
+| `FreshReviewVote.ts` | `yaksha_faq_fresh_review_votes` | Peer-vote freshness votes (unique per `faqId+cycle+voterId`) |
+| `FeatureFlag.ts` | `yaksha_faq_feature_flags` | Experimental feature flags (`sessionSupport`, `goldenTicket`, ...) |
+| `AppSetting.ts` | `yaksha_faq_app_settings` | Singleton admin-editable app settings (e.g. `goldenCooldownHours`) |
+| `SupportCategory.ts` | `yaksha_faq_support_categories` | Support issue types + admin-editable per-category context field schema |
+| `SupportRequest.ts` | `yaksha_faq_support_requests` | Support tickets: troubleshooting, follow-ups, status, Golden Ticket fields |
+| `GuestEvent.ts` | `yaksha_faq_guest_events` | Anonymous (no-account) user analytics |
+| `AttendanceGuidance.ts` | `yaksha_faq_attendance_guidance` | Admin-editable attendance/session guidance content |
+| `UnresolvedSearch.ts` | `yaksha_faq_unresolved_searches` | Unresolved search query tracking |
 
 ### Key schema decisions
 
@@ -297,9 +366,15 @@ Each controller handles a set of related operations. Controllers are imported by
 |---|---|---|
 | `HomePage.tsx` | `/` | Hero search + trending + category grid |
 | `FAQPage.tsx` | `/faq` | FAQ category browser + search |
+| `BatchPortalPage.tsx` | `/explore/select` | Guest batch picker (anonymous-friendly entry) |
 | `CommunityPage.tsx` | `/community` | Community Q&A board |
 | `SavedKnowledgePage.tsx` | `/saved` | Bookmarked knowledge |
 | `AccountPage.tsx` | `/account` | Profile + Zoom OAuth connect |
+| `LeaderboardPage.tsx` | `/leaderboard` | Public reputation leaderboard |
+| `SupportIndexPage.tsx` | `/support` | Session support landing — list of own tickets, new-ticket CTA |
+| `NewSupportRequestPage.tsx` | `/support/new` | New session support ticket form (troubleshoot + dynamic context fields) |
+| `SupportTicketPage.tsx` | `/support/:id` | Single ticket view: follow-ups, status timeline, admin reply |
+| `GoldenTicketPage.tsx` | `/golden` | Golden Ticket (Spurti Points escalation) form + live Escalation Queue + cooldown UX |
 | `AdminPage.tsx` | `/admin` | Admin dashboard (many sub-routes) |
 
 ### Admin sub-pages
@@ -307,8 +382,8 @@ Each controller handles a set of related operations. Controllers are imported by
 | Page | Route | Purpose |
 |---|---|---|
 | `AdminDashboard.tsx` | `/admin` | Overview stats |
-| `AdminFAQs.tsx` | `/admin/faqs` | FAQ management |
-| `FaqReview.tsx` | `/admin/faqs/review` | Flagged FAQ review queue |
+| `AdminFAQs.tsx` | `/admin/faqs` | FAQ management (create, edit, archive, batch/category scoping, FreshnessTierSelector) |
+| `FaqReview.tsx` | `/admin/faqs/review` | Flagged FAQ review queue (audit + freshness) |
 | `AdminFAQAudit.tsx` | `/admin/faq-audit` | AI audit results |
 | `AdminAutoAnswerQueue.tsx` | `/admin/auto-answer` | Auto-answer review |
 | `AdminCommunity.tsx` | `/admin/community` | Post management |
@@ -318,22 +393,51 @@ Each controller handles a set of related operations. Controllers are imported by
 | `AdminZoomInsights.tsx` | `/admin/zoom-insights` | Zoom insight review |
 | `AdminLeaderboard.tsx` | `/admin/leaderboard` | Reputation leaderboard |
 | `AdminUnresolvedSearch.tsx` | `/admin/unresolved-search` | Unresolved query tracking |
-| `AdminAISettings.tsx` | `/admin/ai-settings` | AI provider config |
-| `AdminSettings.tsx` | `/admin/settings` | App settings |
+| `AdminAISettings.tsx` | `/admin/ai-settings` | Per-pipeline AI provider config |
+| `AdminSettings.tsx` | `/admin/settings` | App settings (incl. GoldenTicketSettingsCard: cooldown hours) |
+| `AdminBatches.tsx` | `/admin/batches` | Batch + category management (cohort, term, FAQ scoping) |
+| `AdminFeatures.tsx` | `/admin/features` | Experimental feature flag toggles (`sessionSupport`, `goldenTicket`, ...) |
+| `AdminSupportInbox.tsx` | `/admin/support` | Support ticket inbox (admin triage queue) |
+| `AdminSupportTicket.tsx` | `/admin/support/:id` | Single support ticket detail (admin reply, status, Golden convert) |
+| `AdminSupportCategories.tsx` | `/admin/support/categories` | Support category + dynamic context field schema CRUD |
+| `AdminSupportGuidance.tsx` | `/admin/support/guidance` | Per-issue-type troubleshooting guidance editor |
+| `AdminSupportAnalytics.tsx` | `/admin/support/analytics` | Support ticket analytics (volume, resolution time, by-category) |
+| `AdminLogin.tsx` | `/admin/login` | Dedicated admin login (separate from user auth) |
 
 ### Key components
 
 | Component | Location | Purpose |
 |---|---|---|
-| `SearchBar.tsx` | `components/ui/` | Floating bottom-center search bar |
-| `SearchDropdown.tsx` | `components/faq/` | FAQ autocomplete dropdown |
-| `ThreadDetail.tsx` | `components/ui/` | Community post modal with comments |
-| `PostDetailDialog.tsx` | `components/ui/` | Post + comments dialog |
-| `CommentNode.tsx` | `components/ui/` | Individual comment with edit/delete |
+| `SearchBar.tsx` | `components/search/` | Floating bottom-center search bar |
+| `SearchDropdown.tsx` | `components/search/` | FAQ autocomplete dropdown |
+| `ThreadDetail.tsx` | `components/community/` | Community post modal with comments |
+| `PostDetailDialog.tsx` | `components/community/` | Post + comments dialog |
+| `CommentNode.tsx` | `components/community/` | Individual comment with edit/delete |
 | `CreatePostDialog.tsx` | `components/community/` | Post creation with duplicate detection |
-| `CategoryGrid.tsx` | `components/faq/` | FAQ category cards |
+| `CategoryCardGrid.tsx` | `components/faq/` | Sage-green FAQ category card grid (homepage hero) |
+| `CategoryCard.tsx` | `components/faq/` | Single category card |
+| `CategoryGrid.tsx` | `components/faq/` | Category pill grid (FAQ browser) |
 | `QuestionList.tsx` | `components/faq/` | FAQ accordion list |
+| `FreshnessBadge.tsx` | `components/faq/` | `✓ Verified` / `⏳ Under review` / `⚠ Update requested` indicator |
+| `FlagOutdatedButton.tsx` | `components/faq/` | Per-FAQ manual flag-outdated (modal + reason) |
+| `FreshnessTierSelector.tsx` | `components/faq/` | Tier radio (evergreen/seasonal/volatile) + interval input |
+| `ReviewVoteButtons.tsx` | `components/faq/` | Peer-vote `still_accurate` / `needs_update` + suggestion |
+| `ReportFAQButton.tsx` | `components/faq/` | Report a FAQ (different from flag-outdated) |
+| `FromMeetings.tsx` | `components/faq/` | "From Zoom meetings" related-FAQ block |
+| `DynamicFieldInput.tsx` | `components/support/` | Renders one admin-defined support context field |
+| `ContextFieldsDisplay.tsx` | `components/support/` | Renders all context field values for a ticket |
+| `FeatureGate.tsx` | `components/support/` | Page-level gate: shows the disabled panel if a feature flag is off |
+| `SpurtiChip.tsx` | `components/layout/` | Sage pill: flame icon + `X SP` (current Spurti Points balance) |
+| `ExploreHero.tsx`, `ExploreSearchBar.tsx` | `components/explore/` | Public explore page hero + search bar |
+| `PublicFaqDetail.tsx` | `components/explore/` | Public FAQ detail with related-from-meetings |
+| `usePublicFaqApi.ts` | `components/explore/` | Hook for `/api/public/*` (anonymous, batch-scoped) |
+| `useReadingTracker.ts` | `components/explore/` | Hook that logs a `GuestEvent` after a 5s read |
 | `useAuth.tsx` | `hooks/` | Auth context + JWT + isAuthenticated guard |
+| `FeatureFlagContext` | `context/` | Live feature-flag state, exposes `useFeatureFlag(key)` + `useFeatureFlags()` |
+
+### `components/ui/` — UI primitives only
+
+After the modularity refactor, `components/ui/` contains only true UI primitives (no feature logic): `Avatar`, `Badge`, `Button`, `Card`, `CTA`, `Input`, `PageDoodles`, `Spinner`, `ThemeToggle`. All feature components (thread detail, post dialog, comments, category grid, search, freshness, support, etc.) live in their own domain folders (`community/`, `faq/`, `search/`, `support/`, `explore/`, `notifications/`).
 
 ---
 
@@ -535,6 +639,20 @@ try {
 | `PIPELINE_QUEUE_THRESHOLD` | `0.60` | Queue-for-review confidence |
 | `PIPELINE_MIN_CONFIDENCE` | `0.35` | Skip below this |
 | `PIPELINE_RESULT_TTL_DAYS` | `30` | PipelineResult TTL |
+
+### FAQ Freshness (see [PIPELINES.md §5](PIPELINES.md#5-faq-freshness-pipeline))
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `FAQ_FRESHNESS_CRON_SCHEDULE` | `0 6 * * *` | Daily cron for `runFreshnessCheck()` (currently unwired — see implementation gap note) |
+| `FAQ_VERIFY_THRESHOLD` | `3` | Peer `still_accurate` votes needed to auto-verify |
+| `FAQ_ESCALATION_DAYS` | `3` | Days of inactivity before auto-escalation to mod |
+| `FAQ_SEASONAL_DAYS` | `15` | Default review interval for `freshness_tier: seasonal` |
+| `FAQ_VOLATILE_DAYS` | `4` | Default review interval for `freshness_tier: volatile` |
+
+### Golden Ticket (Spurti Points escalation)
+
+The cooldown duration is a singleton admin setting (`AppSetting.goldenCooldownHours`, range `0-720`, default `48`), not an env var. Tweak from `/admin/settings`. `0` disables the cooldown entirely.
 
 ### Zoom
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Notification from '../models/Notification.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 export interface CreateNotificationParams {
   recipient: import('mongoose').Types.ObjectId;

@@ -1,7 +1,7 @@
 import React, { type ReactNode, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
-import AdminNavbar from './AdminNavbar';
+import Navbar from '../../../components/layout/Navbar';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -26,10 +26,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!isAdmin) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-bg flex">
+    <div className="min-h-screen bg-bg flex pt-24 sm:pt-28">
+      <Navbar />
       <AdminSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-56">
-        <AdminNavbar onMobileMenuToggle={() => setMobileOpen(v => !v)} />
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-56 relative">
+        <div className="absolute top-0 left-0 p-4 lg:hidden z-10">
+          <button onClick={() => setMobileOpen(v => !v)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-faint hover:text-ink hover:bg-mist transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        </div>
         <main className="flex-1 p-5 lg:p-6 overflow-y-auto">{children}</main>
       </div>
     </div>

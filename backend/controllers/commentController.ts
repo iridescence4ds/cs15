@@ -4,10 +4,10 @@ import CommunityPost from '../models/CommunityPost.js';
 import User, { IUser, calculateTier } from '../models/User.js';
 import ReputationLog from '../models/ReputationLog.js';
 import { autoAwardBadges } from './reputationController.js';
-import { sanitizeHtml } from '../utils/sanitize.js';
+import { sanitizeHtml } from '../utils/http/sanitize.js';
 import { createTeaDrop } from './teaNotificationController.js';
-import { dispatchNotification } from '../utils/notificationDispatcher.js';
-import { logger } from '../utils/logger.js';
+import { dispatchNotification } from '../utils/http/notificationDispatcher.js';
+import { logger } from '../utils/http/logger.js';
 
 // Extend Express Request to include user (same pattern as auth middleware)
 declare global {

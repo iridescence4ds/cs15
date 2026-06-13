@@ -10,7 +10,7 @@ import User, { type IUser } from '../models/User.js';
 
 
 
-import { encrypt, decrypt } from '../utils/crypto.js';
+import { encrypt, decrypt } from '../utils/auth/crypto.js';
 
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import FAQ from '../models/FAQ.js';
 import CommunityPost from '../models/CommunityPost.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI!);

@@ -16,9 +16,9 @@ import mongoose, { Types } from 'mongoose';
 import CommunityPost from '../models/CommunityPost.js';
 import FAQ from '../models/FAQ.js';
 import User from '../models/User.js';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { invalidateCache } from '../utils/cache.js';
-import { logger } from '../utils/logger.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { invalidateCache } from '../utils/http/cache.js';
+import { logger } from '../utils/http/logger.js';
 import type { Request, Response } from 'express';
 import type { LifecycleStatus } from '../models/CommunityPost.js';
 
@@ -420,6 +420,95 @@ async function awardPromotionReputation(
   } catch (e) {
     logger.error(`Failed to award promotion reputation: ${(e as Error).message}`);
   }
+}
+
+// ─── Spurti Points (SP) — Golden Ticket currency (v1.65, additive) ──────
+//
+// SP is a separate, spendable currency for the Golden Ticket feature.
+// It lives in `User.sp` (distinct from `User.points`, which drives the
+// tier system) and is recorded in `ReputationLog` with one of the new
+// `sp_*` action values. The two systems NEVER share balance updates —
+// `points` is reputation, `sp` is wallet. Awarding / spending /
+// refunding all go through these three helpers so the audit trail is
+// always consistent and the wallet can never go negative.
+
+const SP_DELTA_RE = /^-?\d+$/;
+
+/**
+ * Award SP to a user. Positive `amount` credits the wallet; the only
+ * legitimate use of a negative amount from this helper is for manual
+ * admin corrections (audit-logged with the supplied `action` so the
+ * reversal is traceable). Throws on non-integer / negative-resulting
+ * amounts so we never silently let the balance go below zero.
+ */
+export async function awardSpurtiPoints(
+  userId: string,
+  amount: number,
+  action: 'sp_awarded' | 'sp_spent' | 'sp_refunded' | 'sp_deducted',
+  reason: string,
+  targetId?: Types.ObjectId
+): Promise<{ newBalance: number }> {
+  if (!userId) throw new Error('awardSpurtiPoints: userId required');
+  if (!Number.isFinite(amount) || !SP_DELTA_RE.test(String(amount))) {
+    throw new Error('awardSpurtiPoints: amount must be an integer');
+  }
+  const amt = Math.trunc(amount);
+  if (amt === 0) throw new Error('awardSpurtiPoints: amount cannot be zero');
+
+  const user = await User.findById(userId);
+  if (!user) throw new Error('awardSpurtiPoints: user not found');
+
+  // Guard the BALANCE — must be checked against the prospective total,
+  // NOT the clamped result. If we did `Math.max(0, ...) < (user.sp + amt)`
+  // a deduction that would push the wallet below zero would silently
+  // clamp to 0 because `Math.max(0, -15) = 0` and `0 < -15` is false.
+  // The fix: compute the prospective total first, reject if it would
+  // go negative, then store it.
+  const prospective = (user.sp ?? 0) + amt;
+  if (prospective < 0) {
+    throw new Error('awardSpurtiPoints: insufficient Spurti Points');
+  }
+  user.sp = prospective;
+  await user.save();
+
+  const ReputationLog = (await import('../models/ReputationLog.js')).default;
+  await ReputationLog.create({
+    userId: new Types.ObjectId(userId),
+    delta: amt,
+    reason,
+    action: action as any,
+    targetId: targetId ?? null,
+    targetType: 'spurti_point_ledger',
+  });
+
+  return { newBalance: prospective };
+}
+
+/** Spend SP — credits the wallet by `-amount`. Throws on insufficient balance. */
+export async function spendSpurtiPoints(
+  userId: string,
+  amount: number,
+  reason: string,
+  targetId?: Types.ObjectId
+): Promise<{ newBalance: number }> {
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
+    throw new Error('spendSpurtiPoints: amount must be a positive integer');
+  }
+  return awardSpurtiPoints(userId, -amount, 'sp_spent', reason, targetId);
+}
+
+/** Refund SP — credits the wallet by `+amount`. Used when a Golden ticket
+ *  is rolled back / rejected after the SP was already debited. */
+export async function refundSpurtiPoints(
+  userId: string,
+  amount: number,
+  reason: string,
+  targetId?: Types.ObjectId
+): Promise<{ newBalance: number }> {
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
+    throw new Error('refundSpurtiPoints: amount must be a positive integer');
+  }
+  return awardSpurtiPoints(userId, amount, 'sp_refunded', reason, targetId);
 }
 
 // ─── Admin Controllers ─────────────────────────────────────────────────────────

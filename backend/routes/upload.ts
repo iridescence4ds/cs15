@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
-import { getCloudinaryConfig, signUploadParams, isOurCloudinaryAsset } from '../utils/cloudinary.js';
+import { getCloudinaryConfig, signUploadParams, isOurCloudinaryAsset } from '../utils/http/cloudinary.js';
 
 const router = Router();
 

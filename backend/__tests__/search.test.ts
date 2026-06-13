@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeRRF, applySearchThreshold } from '../utils/search.js';
+import { computeRRF, applySearchThreshold } from '../utils/http/search.js';
 
 // ─── computeRRF tests ────────────────────────────────────────────────────────
 

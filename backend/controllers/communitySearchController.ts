@@ -1,9 +1,9 @@
 import mongoose, { Types } from 'mongoose';
 import CommunityPost, { ICommunityPost } from '../models/CommunityPost.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 import { Request, Response } from 'express';
-import { computeRRF, applySearchThreshold, type SearchResultItem } from '../utils/search.js';
-import { logger } from '../utils/logger.js';
+import { computeRRF, applySearchThreshold, type SearchResultItem } from '../utils/http/search.js';
+import { logger } from '../utils/http/logger.js';
 
 const COLLECTION_NAME = CommunityPost.collection.name;
 

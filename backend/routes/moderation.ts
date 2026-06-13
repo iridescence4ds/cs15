@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { adminOnly } from '../middleware/admin.js';
 import { banUser, unbanUser, suspendUser, unsuspendUser, warnUser, softDeleteUser, getModerationLogs, getModerationQueue } from '../controllers/moderationController.js';
-import { validateBody, banUserSchema, suspendUserSchema, warnUserSchema, softDeleteSchema } from '../utils/validation.js';
+import { validateBody, banUserSchema, suspendUserSchema, warnUserSchema, softDeleteSchema } from '../utils/auth/validation.js';
 
 const router = Router();
 router.use(adminOnly);

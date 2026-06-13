@@ -6,9 +6,102 @@ import React from 'react';
  * Community: raise hand → discuss → upvote → solved
  */
 
+export function HomeDoodles() {
+  return (
+    <>
+      {/* Curly bracket doodle */}
+      <div className="absolute -top-6 -left-16 hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="50" height="100" viewBox="0 0 50 100" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M40 8 C26 8, 22 18, 22 28 C22 38, 16 44, 6 46 C16 48, 22 54, 22 64 C22 74, 26 84, 40 84" stroke="var(--deco-stroke)" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* "Let's solve it!" speech bubble */}
+      <div className="absolute -top-8 left-[40px] hidden lg:block" style={{ pointerEvents: 'none', transform: 'rotate(-6deg)' }}>
+        <svg width="105" height="80" viewBox="0 0 105 80" fill="none" style={{ opacity: 0.32 }}>
+          <ellipse cx="52" cy="28" rx="42" ry="22" stroke="var(--deco-stroke)" strokeWidth="2" strokeDasharray="6 4" fill="none"/>
+          <path d="M68 46 L80 68 L62 44" stroke="var(--deco-stroke)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          <text x="22" y="25" fontSize="11" fontFamily="'DM Serif Display', serif" fontStyle="italic" fill="var(--deco-stroke)" opacity="0.85">Let&apos;s</text>
+          <text x="18" y="38" fontSize="11" fontFamily="'DM Serif Display', serif" fontStyle="italic" fill="var(--deco-stroke)" opacity="0.85">solve it!</text>
+        </svg>
+      </div>
+
+      {/* Big sparkle */}
+      <div className="absolute top-2 right-[28%] hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ opacity: 0.35 }}>
+          <path d="M14 2 L14 26 M2 14 L26 14 M5 5 L23 23 M23 5 L5 23" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* Small star */}
+      <div className="absolute top-[20px] left-[16%] hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M9 0 L9 18 M0 9 L18 9" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+          <path d="M3 3 L15 15 M15 3 L3 15" stroke="var(--section-icon)" strokeWidth="1.2" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* Curved arrow */}
+      <div className="absolute top-[120px] -left-10 hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="70" height="70" viewBox="0 0 70 70" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M12 8 C24 30, 36 44, 58 54" stroke="var(--deco-stroke)" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+          <path d="M48 48 L58 54 L50 60" stroke="var(--deco-stroke)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+
+      {/* Lightbulb doodle */}
+      <div className="absolute -top-4 -right-14 hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="55" height="75" viewBox="0 0 55 75" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M27 12 C16 12, 10 20, 10 28 C10 36, 16 40, 20 46 L34 46 C38 40, 44 36, 44 28 C44 20, 38 12, 27 12Z" stroke="var(--section-icon)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+          <line x1="20" y1="50" x2="34" y2="50" stroke="var(--section-icon)" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="22" y1="54" x2="32" y2="54" stroke="var(--section-icon)" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="27" y1="2" x2="27" y2="7" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="8" y1="12" x2="12" y2="16" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="46" y1="12" x2="42" y2="16" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="2" y1="28" x2="7" y2="28" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="47" y1="28" x2="52" y2="28" stroke="var(--section-icon)" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* Question mark doodle */}
+      <div className="absolute top-[210px] -right-14 hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="40" height="60" viewBox="0 0 40 60" fill="none" style={{ opacity: 0.35 }}>
+          <path d="M12 16 C12 6, 28 6, 28 16 C28 24, 20 26, 20 36" stroke="var(--deco-stroke)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+          <circle cx="20" cy="44" r="2.5" fill="#b8a080"/>
+        </svg>
+      </div>
+
+      {/* Pencil doodle */}
+      <div className="absolute top-[200px] left-[-20px] hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="50" height="50" viewBox="0 0 50 50" fill="none" style={{ opacity: 0.28 }}>
+          <path d="M38 5 L12 32 L10 42 L20 40 L46 13 Z" stroke="var(--deco-stroke)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="30" y1="12" x2="38" y2="20" stroke="var(--deco-stroke)" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* Code brackets */}
+      <div className="absolute top-[330px] right-[-12px] hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="45" height="55" viewBox="0 0 45 55" fill="none" style={{ opacity: 0.28 }}>
+          <path d="M16 5 L6 27 L16 49" stroke="var(--deco-stroke)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M29 5 L39 27 L29 49" stroke="var(--deco-stroke)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="14" y1="20" x2="31" y2="20" stroke="var(--deco-stroke)" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="14" y1="34" x2="31" y2="34" stroke="var(--deco-stroke)" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+
+      {/* Wavy squiggle */}
+      <div className="absolute top-[170px] right-[12%] hidden lg:block" style={{ pointerEvents: 'none' }}>
+        <svg width="90" height="16" viewBox="0 0 90 16" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M2 8 Q12 2, 22 8 Q32 14, 42 8 Q52 2, 62 8 Q72 14, 82 8" stroke="var(--section-icon)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+        </svg>
+      </div>
+    </>
+  );
+}
+
 export function FAQDoodles() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none mt-12 lg:mt-16" aria-hidden="true">
       <div className="absolute top-[88px] left-[6%] hidden lg:block" style={{ pointerEvents: 'none' }}>
         <svg width="70" height="80" viewBox="0 0 70 80" fill="none" style={{ opacity: 0.28 }}>
           <circle cx="22" cy="50" r="8" stroke="#8a7560" strokeWidth="1.8" fill="none"/>
@@ -90,7 +183,7 @@ export function FAQDoodles() {
 
 export function CommunityDoodles() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none mt-12 lg:mt-16" aria-hidden="true">
       <div className="absolute top-[82px] left-[5%] hidden lg:block" style={{ pointerEvents: 'none' }}>
         <svg width="60" height="80" viewBox="0 0 60 80" fill="none" style={{ opacity: 0.28 }}>
           <circle cx="30" cy="26" r="9" stroke="#8a7560" strokeWidth="1.8" fill="none"/>
@@ -180,4 +273,4 @@ export function CommunityDoodles() {
   );
 }
 
-export default { FAQDoodles, CommunityDoodles };
+export default { FAQDoodles, CommunityDoodles, HomeDoodles };

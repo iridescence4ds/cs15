@@ -7,7 +7,12 @@
 
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
-dotenv.config({ path: '/Users/yashhwanth/Documents/shamagama/backend/.env' });
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI ?? 'mongodb+srv://meowmeow:***@cluster0.z3cgb58.mongodb.net/?appName=Cluster0';
 

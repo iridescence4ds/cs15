@@ -13,10 +13,10 @@ import { TranscriptKnowledge, type KnowledgeStatus, type KnowledgeSource } from 
 import { ZoomMeeting } from '../models/ZoomMeeting.js';
 import CommunityPost from '../models/CommunityPost.js';
 import FAQ from '../models/FAQ.js';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { resolveProviderAsync } from '../utils/aiProvider.js';
-import { dispatchNotification } from '../utils/notificationDispatcher.js';
-import { logger } from '../utils/logger.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { resolveProviderAsync } from '../utils/ai/aiProvider.js';
+import { dispatchNotification } from '../utils/http/notificationDispatcher.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 

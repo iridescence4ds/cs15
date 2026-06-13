@@ -22,8 +22,8 @@ import CommunityPost from '../models/CommunityPost.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { logAction } from './adminController.js';
-import { escalationsTotal } from '../utils/metrics.js';
-import { logger } from '../utils/logger.js';
+import { escalationsTotal } from '../utils/http/metrics.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 // Threshold in days after which an unanswered post is auto-escalated.

@@ -27,9 +27,9 @@ import CommunityPost from '../models/CommunityPost.js';
 import FAQ from '../models/FAQ.js';
 import { TranscriptKnowledge } from '../models/TranscriptKnowledge.js';
 import Notification from '../models/Notification.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 import { searchKnowledge, searchRelevantFaqs, searchRelevantCommunityPosts } from '../services/knowledgeBase.js';
-import { chatWithConfig, getPipelineProviderConfig } from '../utils/aiProvider.js';
+import { chatWithConfig, getPipelineProviderConfig } from '../utils/ai/aiProvider.js';
 import { PipelineResult } from '../models/PipelineResult.js';
 import {
   searchKnowledgeWithFallback,
@@ -37,7 +37,7 @@ import {
   buildAuditMetaUpdate,
   logPipelineEvent,
   isSensitiveContent,
-} from '../utils/pipelineCommon.js';
+} from '../utils/ai/pipelineCommon.js';
 
 // ─── Sensitive content detection (shared — imported from pipelineCommon) ──────
 // Minimum confidence to auto-approve and post the answer (0–1)

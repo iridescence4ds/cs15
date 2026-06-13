@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { FAQItem, getQuestionTitle, getAnswerText, formatDate, formatCategoryName, TrustBadge, SourceBadge } from './faqUtils';
-import FreshnessBadge from '../ui/FreshnessBadge';
+import FreshnessBadge from '../faq/FreshnessBadge';
 
 /* ── Chevron icon (rotates on expand) ── */
 function ChevronDown() {

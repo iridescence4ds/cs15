@@ -14,8 +14,8 @@
  */
 
 import AiConfig from '../models/AiConfig.js';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { logger } from '../utils/logger.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Provider definitions ───────────────────────────────────────────────────
 
@@ -277,7 +277,7 @@ export class AiClient {
       };
     }
 
-    const { resolveProviderAsync, getModelForProvider } = await import('../utils/aiProvider.js');
+    const { resolveProviderAsync, getModelForProvider } = await import('../utils/ai/aiProvider.js');
     const { default: AiConfig } = await import('../models/AiConfig.js');
 
     const dbConfig = await AiConfig.findOne({ isActive: true });

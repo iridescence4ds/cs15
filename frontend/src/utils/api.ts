@@ -175,14 +175,19 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     params: config.params,
   });
 
-  // Automatic cancel for duplicate search/suggest requests
-  const isSearchOrSuggest = config.url && (
-    config.url.includes('/search') ||
-    config.url.includes('/community/search') ||
-    config.url.includes('/search/suggest')
-  );
+  // Automatic cancel for stale user-typed searches only.
+  // POST /search = semantic search result (replace old result as user types).
+  // GET  /search/suggest = live suggestion dropdown (replace stale suggestions).
+  // GET  /search/trending is NOT included: it's a one-shot mount-time fetch
+  // that should always complete. Cancelling it leaves the chips empty
+  // (React StrictMode double-mount in dev triggers the previous-controller
+  // abort path and shows "Failed to load trending queries." on the console).
+  const isCancelableSearch =
+    config.url &&
+    ((config.method?.toLowerCase() === 'post' && config.url.endsWith('/search')) ||
+      (config.method?.toLowerCase() === 'get' && config.url.includes('/search/suggest')));
 
-  if (isSearchOrSuggest && config.url && config.method) {
+  if (isCancelableSearch && config.url && config.method) {
     const requestKey = `${config.method}:${config.url}`;
     const previousController = pendingRequests.get(requestKey);
     if (previousController) {
@@ -226,6 +231,27 @@ api.interceptors.response.use(
     const start: number = (config as any).__start || Date.now();
     const duration = Date.now() - start;
     const status = error.response?.status || 0;
+
+    // Cancelled requests (AbortController) are NOT errors. Log them at INFO
+    // and clear the pendingRequests entry without triggering the 401 modal
+    // or the warn/error log level.
+    if (axios.isCancel(error)) {
+      sendToFileLog('INFO', `<-- ${config?.method?.toUpperCase()} ${config?.url} CANCELLED ${duration}ms`, {
+        reqId,
+        status: 0,
+        durationMs: duration,
+        url: config?.url ?? 'unknown',
+        message: 'request aborted by client',
+      });
+      if (config && config.url && config.method) {
+        const requestKey = `${config.method}:${config.url}`;
+        if (pendingRequests.get(requestKey)?.signal === config.signal) {
+          pendingRequests.delete(requestKey);
+        }
+      }
+      return Promise.reject(error);
+    }
+
     const isError = status >= 500;
     const isWarn = status >= 400;
 

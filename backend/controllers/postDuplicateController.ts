@@ -15,9 +15,10 @@
 import { Request, Response } from 'express';
 import FAQ from '../models/FAQ.js';
 import CommunityPost from '../models/CommunityPost.js';
-import { generateEmbedding } from '../utils/embeddings.js';
-import { detectDuplicatesWithAI } from '../utils/duplicateDetector.js';
-import { logger } from '../utils/logger.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
+import { detectDuplicatesWithAI } from '../utils/ai/duplicateDetector.js';
+import { resolveProviderAsync } from '../utils/ai/aiProvider.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
 
@@ -265,36 +266,57 @@ export const checkDuplicateController = async (
 
     const q = query.trim();
 
-    // Primary: AI-powered semantic duplicate detection
-    let matches = await detectDuplicatesWithAI(q);
-
-    // Also search knowledge base
+    // Architecture: when ANY AI provider is configured, the AI is the SOLE
+    // evaluator. Its verdict is final — no knowledge base mixing, no keyword
+    // fallback. The AI returns nothing if the question is genuinely novel.
+    //
+    // KB + keyword heuristics are only used when no AI provider is configured
+    // (server running with no API keys at all). This keeps the AI's judgment
+    // uncontested and prevents low-quality KB noise from polluting results
+    // the AI has already evaluated.
+    let aiAvailable = false;
     try {
-      const { searchKnowledge } = await import('../services/knowledgeBase.js');
-      const knowledgeMatches = await searchKnowledge(q, 3);
-      for (const km of knowledgeMatches) {
-        matches.push({
-          _id: km._id,
-          title: km.question,
-          question: km.question,
-          answer: km.answer,
-          source: 'knowledge' as const,
-          sourceTitle: km.sourceTitle,
-          score: km.score,
-          confidence: km.confidence,
-          reason: km.reason ?? `From ${km.source}: ${km.answer}`,
-          matchType: 'ai' as const,
-        });
-      }
-    } catch (err) {
-      logger.warn(`[checkDuplicate] knowledge search failed: ${(err as Error).message}`);
+      await resolveProviderAsync();
+      aiAvailable = true;
+    } catch {
+      aiAvailable = false;
     }
 
-    // Fallback: keyword heuristics if AI + knowledge return nothing
-    if (matches.length === 0) {
-      const words = q.split(' ').filter((w) => w.length >= 3);
-      const isShortQuery = words.length < 3;
-      matches = await checkDuplicate(q, isShortQuery);
+    let matches: DuplicateMatch[] = [];
+
+    if (aiAvailable) {
+      // AI is the evaluator. Trust its verdict.
+      matches = await detectDuplicatesWithAI(q);
+    } else {
+      // No AI configured — use knowledge base + keyword fallback
+      try {
+        const { searchKnowledge } = await import('../services/knowledgeBase.js');
+        const knowledgeMatches = await searchKnowledge(q, 3);
+        for (const km of knowledgeMatches) {
+          if (km.score < 0.50) continue;
+          matches.push({
+            _id: km._id,
+            title: km.question,
+            question: km.question,
+            answer: km.answer,
+            source: 'knowledge' as const,
+            sourceTitle: km.sourceTitle,
+            score: km.score,
+            confidence: km.confidence,
+            reason: km.reason ?? `From ${km.source}: ${km.answer}`,
+            matchType: 'ai' as const,
+          });
+        }
+      } catch (err) {
+        logger.warn(`[checkDuplicate] knowledge search failed: ${(err as Error).message}`);
+      }
+
+      // Keyword heuristics if knowledge base is also empty
+      if (matches.length === 0) {
+        const words = q.split(' ').filter((w) => w.length >= 3);
+        const isShortQuery = words.length < 3;
+        matches = await checkDuplicate(q, isShortQuery);
+      }
     }
 
     // Sort and dedupe

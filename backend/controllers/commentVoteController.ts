@@ -17,7 +17,7 @@ import User, { calculateTier } from '../models/User.js';
 import ReputationLog from '../models/ReputationLog.js';
 import { autoAwardBadges } from './reputationController.js';
 import { createTeaDrop } from './teaNotificationController.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── toggleCommentUpvote ───────────────────────────────────────────────────────
 // POST /api/community/:id/comments/:commentId/upvote

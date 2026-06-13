@@ -10,8 +10,9 @@
 2. [FAQ Audit Pipeline](#2-faq-audit-pipeline) — AI monitors FAQ quality over time
 3. [Search Pipeline](#3-search-pipeline) — Hybrid vector + keyword search
 4. [Zoom Ingestion Pipeline](#4-zoom-ingestion-pipeline) — Per-user OAuth transcript processing
-5. [Shared Infrastructure](#5-shared-infrastructure)
-6. [Adding a New Pipeline](#6-adding-a-new-pipeline)
+5. [FAQ Freshness Pipeline](#5-faq-freshness-pipeline) — Peer-vote review + auto-flag for stale FAQs
+6. [Shared Infrastructure](#6-shared-infrastructure)
+7. [Adding a New Pipeline](#7-adding-a-new-pipeline)
 
 ---
 
@@ -454,7 +455,92 @@ Server-side code is complete. Register in Zoom Marketplace:
 
 ---
 
-## 5. Shared Infrastructure
+## 5. FAQ Freshness Pipeline
+
+**What it does:** Keeps approved FAQs honest over time. Every FAQ carries a `freshness_tier` (`evergreen` / `seasonal` / `volatile`) and a per-tier review interval. A daily cron auto-flags FAQs whose last-verified date exceeds the interval, opening a peer-review window. Any signed-in user can vote `still_accurate` or `needs_update`; once enough peers agree, the FAQ is auto-verified or escalated to a moderator.
+
+**Files:**
+- Controller: `backend/controllers/freshnessController.ts` — `flagFAQ`, `voteReview`, `getReviewQueue`, `getEscalated`, `verifyEscalatedFAQ`, `dismissEscalatedFAQ`, `runFreshnessCheck` (cron)
+- Routes: `backend/routes/faq.ts` — `POST /api/faq/:id/flag`, `POST /api/faq/:id/vote-review`, `GET /api/community/review-queue`; admin routes on `backend/routes/adminAudit.ts` for escalated/review
+- Frontend: `frontend/src/components/faq/FreshnessBadge.tsx`, `FlagOutdatedButton.tsx`, `ReviewVoteButtons.tsx`, `FreshnessTierSelector.tsx`
+- Admin: `AdminFAQs.tsx` embeds `FreshnessTierSelector` in create + edit modals
+- Models: `FAQ.freshnessTier` + `reviewIntervalDays` + `reviewStatus` + `lastVerifiedDate` + `flaggedAt` + `flagType` + `flagReason` + `flaggedBy` + `reviewCycle`; `FreshReviewVote`, `FreshReviewLog`
+
+### Flow
+
+```
+Daily cron (FAQ_FRESHNESS_CRON_SCHEDULE, default 06:00 UTC)
+        │
+        ▼
+runFreshnessCheck():
+  For every FAQ with freshnessTier != 'evergreen':
+    if (today - lastVerifiedDate) > reviewIntervalDays:
+      reviewStatus = 'pending_review'
+      flaggedAt = now
+      reviewCycle += 1
+        │
+        ▼
+Peer review window opens:
+  /admin/faqs/review  (admin view)
+  /community/review-queue  (public view, anyone can vote)
+        │
+        ▼
+voteReview(faqId, verdict, suggestion?):
+  Upsert vote in FreshReviewVote (unique faqId+cycle+voterId)
+        │
+        ▼
+Tally after each vote:
+  if 'still_accurate' count >= FAQ_VERIFY_THRESHOLD (default 3):
+    reviewStatus = 'verified'
+    lastVerifiedDate = now
+    flaggedAt = null
+  if 'needs_update' count >= threshold:
+    reviewStatus = 'update_requested'  → escalated
+        │
+        ▼
+3 days of no votes / no resolution (FAQ_ESCALATION_DAYS):
+  Auto-escalate to update_requested
+        │
+        ▼
+Moderator verdict:
+  verifyEscalatedFAQ(faqId):
+    reviewStatus = 'verified'
+    lastVerifiedDate = now
+  dismissEscalatedFAQ(faqId, reason):
+    reviewStatus = 'verified'  (false alarm)
+    audit-log the reason
+```
+
+### Tiers
+
+| Tier | Default interval | Meaning |
+|---|---|---|
+| `evergreen` | never | Definitions, concepts, stable rules — never auto-flag |
+| `seasonal` | `FAQ_SEASONAL_DAYS` (15) | Changes per batch/term cycle |
+| `volatile` | `FAQ_VOLATILE_DAYS` (4) | Changes frequently / unpredictably |
+
+### Endpoints
+
+- `POST /api/faq/:id/flag` — manual flag (any user), body `{ reason?: string }`
+- `POST /api/faq/:id/vote-review` — peer vote, body `{ verdict: 'still_accurate' | 'needs_update', suggestion?: string }`
+- `GET /api/community/review-queue` — public list of pending-review FAQs
+- `GET /api/admin/escalated` — admin list of FAQs escalated to mod
+- `POST /api/admin/escalated/:id/verify` — mod re-verifies
+- `POST /api/admin/escalated/:id/dismiss` — mod dismisses (false alarm)
+
+### Config env vars
+
+- `FAQ_FRESHNESS_CRON_SCHEDULE` = `0 6 * * *`
+- `FAQ_VERIFY_THRESHOLD` = `3` (peers needed to auto-verify)
+- `FAQ_ESCALATION_DAYS` = `3`
+- `FAQ_SEASONAL_DAYS` = `15`
+- `FAQ_VOLATILE_DAYS` = `4`
+
+> ⚠ **Implementation gap:** `runFreshnessCheck()` is defined and exported in `freshnessController.ts` but is **not currently wired to any scheduler** (no `node-cron` registration in `server.ts`). The function works when called manually, but the daily cron will not fire until the wiring is added. Until then, FAQs are only flagged manually via `POST /api/faq/:id/flag`.
+
+---
+
+## 6. Shared Infrastructure
 
 ### `pipelineCommon.ts` (`backend/utils/pipelineCommon.ts`)
 
@@ -530,7 +616,7 @@ Indexes: `{pipeline, flagged, checkedAt}`, `{targetId, pipeline}`, `{checkedAt}`
 
 ---
 
-## 6. Adding a New Pipeline
+## 7. Adding a New Pipeline
 
 1. **Import shared utilities** from `pipelineCommon.ts`:
    ```ts

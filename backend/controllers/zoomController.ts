@@ -18,14 +18,14 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { ZoomMeeting, ZoomInsight } from '../models/ZoomMeeting.js';
 import User from '../models/User.js';
-import { downloadTranscriptAsUser, getPastRecordings } from '../utils/zoomOAuth.js';
-import { parseVTT, parseVTTWithSpeakers, isEmptyTranscript } from '../utils/vttParser.js';
+import { downloadTranscriptAsUser, getPastRecordings } from '../utils/zoom/zoomOAuth.js';
+import { parseVTT, parseVTTWithSpeakers, isEmptyTranscript } from '../utils/zoom/vttParser.js';
 import { processZoomMeetingForKnowledge } from '../services/knowledgeBase.js';
-import { extractInsightsFromTranscript } from '../utils/zoomExtractor.js';
-import { CircuitOpenError } from '../utils/circuitBreaker.js';
-import { sanitizeText } from '../utils/sanitize.js';
-import { logger } from '../utils/logger.js';
-import { getZoomHealth, recordZoomError } from '../utils/zoomHealth.js';
+import { extractInsightsFromTranscript } from '../utils/zoom/zoomExtractor.js';
+import { CircuitOpenError } from '../utils/http/circuitBreaker.js';
+import { sanitizeText } from '../utils/http/sanitize.js';
+import { logger } from '../utils/http/logger.js';
+import { getZoomHealth, recordZoomError } from '../utils/zoom/zoomHealth.js';
 import { scheduleRetry, manualRetry } from '../services/retryService.js';
 
 // ─── Webhook Signature Verification ─────────────────────────────────────────
@@ -365,7 +365,7 @@ export async function processTranscriptPayloadInternal(
   sourceType: 'zoom_transcript' | 'vtt_file' | 'txt_file' | 'manual_upload'
 ): Promise<void> {
   // Resolve AI provider once so we can record it on the meeting doc
-  const providerCfg = await import('../utils/aiProvider.js').then(m => m.resolveProviderAsync());
+  const providerCfg = await import('../utils/ai/aiProvider.js').then(m => m.resolveProviderAsync());
   const processedBy = `${providerCfg.provider}:${providerCfg.model}`;
 
   // Update status + progress stage
@@ -602,7 +602,7 @@ export async function convertInsightToFAQ(req: Request, res: Response): Promise<
     if (insight.publishedFaqId) { res.status(409).json({ message: 'Insight already promoted to FAQ' }); return; }
 
     const { default: FAQ } = await import('../models/FAQ.js');
-    const { generateEmbedding } = await import('../utils/embeddings.js');
+    const { generateEmbedding } = await import('../utils/ai/embeddings.js');
 
     const tags: string[] = [];
     if (insight.question) {

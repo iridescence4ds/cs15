@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useAdminAuth } from '../hooks/useAdminAuth';
 import adminApi from '../utils/adminApi';
@@ -93,6 +93,92 @@ export default function AdminSettings() {
           <div className="flex items-center justify-between py-2 border-b border-border"><span>Session</span><span className="text-ink-faint">{user?.email}</span></div>
           <div className="flex items-center justify-between py-2"><span>Token expiry</span><span className="text-ink-faint">7 days</span></div>
           <p className="text-xs text-ink-faint pt-1">Tokens stored in localStorage. Use HTTPS in production.</p>
+        </div>
+      </div>
+
+      {/* v1.65 — Global app settings (Golden Ticket knobs). Live in
+          the admin's own /admin/settings page (not on /admin/features)
+          because they're runtime tunables, not feature toggles. */}
+      <GoldenTicketSettingsCard onSaved={showToast} />
+    </div>
+  );
+}
+
+/**
+ * Settings card for the Golden Ticket tunables. Editable inline;
+ * hits PUT /api/admin/settings with one key at a time. The card
+ * shows the current value, an input, and a Save button — no fancy
+ * table, just a focused editor for the two most-impactful knobs.
+ */
+function GoldenTicketSettingsCard({ onSaved }: { onSaved: (msg: string, type: 'success' | 'error') => void }): React.ReactElement {
+  const [cooldownHours, setCooldownHours] = useState<number>(48);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await adminApi.get('/admin/settings');
+        if (cancelled) return;
+        setCooldownHours(res.data?.settings?.goldenCooldownHours ?? 48);
+      } catch {
+        onSaved('Failed to load Golden Ticket settings', 'error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [onSaved]);
+
+  const save = async (key: 'goldenCooldownHours', value: number): Promise<void> => {
+    setSavingKey(key);
+    try {
+      await adminApi.put('/admin/settings', { key, value });
+      onSaved('Saved', 'success');
+    } catch (err) {
+      const msg = ((err as { response?: { data?: { message?: string } } })?.response?.data?.message) ?? 'Save failed';
+      onSaved(msg, 'error');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  return (
+    <div className="admin-card-surface">
+      <div className="admin-card-header">
+        <p className="text-sm font-semibold text-ink">Golden Ticket</p>
+        <p className="text-xs text-ink-faint mt-0.5">Spurti Points escalation tunables. Changes apply to new submissions immediately.</p>
+      </div>
+      <div className="px-5 py-4 space-y-5">
+        <div>
+          <label className="admin-label">Cooldown (hours)</label>
+          <p className="text-xs text-ink-faint mb-2">
+            How long a user must wait after a Golden Ticket is closed (by admin
+            resolution OR rejection) before submitting another. This is the only
+            post-submission consequence — no ban, no penalty, no extra SP
+            deduction. Set to 0 to disable the cooldown entirely.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={720}
+              step={1}
+              value={cooldownHours}
+              disabled={loading}
+              onChange={(e) => setCooldownHours(Math.max(0, Math.min(720, Math.trunc(Number(e.target.value) || 0))))}
+              className="admin-input w-32"
+            />
+            <button
+              type="button"
+              disabled={loading || savingKey === 'goldenCooldownHours'}
+              onClick={() => save('goldenCooldownHours', cooldownHours)}
+              className="admin-btn-primary"
+            >
+              {savingKey === 'goldenCooldownHours' ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

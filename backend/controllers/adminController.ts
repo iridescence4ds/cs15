@@ -1,14 +1,15 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import FAQ, { IFAQ } from '../models/FAQ.js';
 import User, { IUser } from '../models/User.js';
 import SearchLog from '../models/SearchLog.js';
 import AdminLog from '../models/AdminLog.js';
 import CommunityPost from '../models/CommunityPost.js';
-import { invalidateCache } from '../utils/cache.js';
-import { sanitizeHtml } from '../utils/sanitize.js';
-import { logger } from '../utils/logger.js';
+import { invalidateCache } from '../utils/http/cache.js';
+import { sanitizeHtml } from '../utils/http/sanitize.js';
+import { logger } from '../utils/http/logger.js';
 import FreshReviewVote from '../models/FreshReviewVote.js';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 
 export const logAction = async (
   adminId: string,
@@ -219,10 +220,12 @@ export const getAdminFAQs = async (req: Request, res: Response): Promise<void> =
     const category = (req.query.category as string) || '';
     const search = (req.query.search as string) || '';
     const sort = (req.query.sort as string) || '-createdAt';
+    const batchId = (req.query.batchId as string) || '';
 
     const query: Record<string, unknown> = {};
     if (status) query.status = status;
     if (category) query.category = category;
+    if (batchId && Types.ObjectId.isValid(batchId)) query.batchId = batchId;
     if (search)
       query.$or = [
         { question: { $regex: escapeRegex(search), $options: 'i' } },

@@ -8,7 +8,7 @@
 
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { generateEmbedding } from '../utils/embeddings.js';
+import { generateEmbedding } from '../utils/ai/embeddings.js';
 
 const FAQ_COLL = 'yaksha_faq_faqs';
 const COMM_COLL = 'yaksha_faq_communityposts';

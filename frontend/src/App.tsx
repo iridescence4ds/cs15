@@ -2,9 +2,13 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { AuthModalProvider, useAuthModal } from './context/AuthModalContext';
+import { BatchProvider } from './context/BatchContext';
+import { FeatureFlagProvider } from './context/FeatureFlagContext';
 import AuthModal from './components/auth/AuthModal';
 import Spinner from './components/ui/Spinner';
 import AskAIButton from './components/askai/AskAIButton';
+import { FeatureGate } from './components/support/FeatureGate';
+import MainLayout from './components/layout/MainLayout';
 
 // User pages
 const AccountPage = lazy(() => import('./pages/AccountPage'));
@@ -13,6 +17,12 @@ const FAQPage = lazy(() => import('./pages/FAQPage'));
 const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const SavedKnowledgePage = lazy(() => import('./pages/SavedKnowledgePage'));
+const BatchPortalPage = lazy(() => import('./pages/BatchPortalPage'));
+const SupportIndexPage = lazy(() => import('./pages/SupportIndexPage'));
+const NewSupportRequestPage = lazy(() => import('./pages/NewSupportRequestPage'));
+const SupportTicketPage = lazy(() => import('./pages/SupportTicketPage'));
+const GoldenTicketPage = lazy(() => import('./pages/GoldenTicketPage'));
+const WelcomePackagePage = lazy(() => import('./pages/WelcomePackagePage'));
 
 // Admin pages
 const AdminLogin = lazy(() => import('./admin/pages/AdminLogin'));
@@ -30,6 +40,15 @@ const AdminAISettings = lazy(() => import('./admin/pages/AdminAISettings'));
 const FaqReview = lazy(() => import('./admin/pages/FaqReview'));
 const AdminAutoAnswerQueue = lazy(() => import('./admin/pages/AdminAutoAnswerQueue'));
 const AdminFAQAudit = lazy(() => import('./admin/pages/AdminFAQAudit'));
+const AdminBatches = lazy(() => import('./admin/pages/AdminBatches'));
+const AdminSupportInbox = lazy(() => import('./admin/pages/AdminSupportInbox'));
+const AdminSupportTicket = lazy(() => import('./admin/pages/AdminSupportTicket'));
+const AdminSupportGuidance = lazy(() => import('./admin/pages/AdminSupportGuidance'));
+const AdminSupportAnalytics = lazy(() => import('./admin/pages/AdminSupportAnalytics'));
+const AdminSupportCategories = lazy(() => import('./admin/pages/AdminSupportCategories'));
+const AdminFeatures = lazy(() => import('./admin/pages/AdminFeatures'));
+const AdminWelcomePage = lazy(() => import('./admin/pages/AdminWelcomePage'));
+const AdminProjectsPage = lazy(() => import('./admin/pages/AdminProjectsPage'));
 const AdminLayout = lazy(() => import('./admin/components/layout/AdminLayout'));
 
 interface AccountRouteProps {
@@ -93,23 +112,50 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        {/* Public content routes — anonymous users can browse freely */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/faq" element={<FAQPage />} />
-        <Route path="/faq/:id" element={<FAQPage />} />
-        <Route path="/community" element={<CommunityPage />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/saved" element={<SavedKnowledgePage />} />
+        <Route element={<MainLayout />}>
+          {/* The public FAQ discovery page is now the base URL — anyone
+              landing on the site gets the no-auth, anonymous-analytics
+              experience. */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/explore/select" element={<BatchPortalPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/faq/:id" element={<FAQPage />} />
+          <Route path="/community" element={<CommunityPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/saved" element={<SavedKnowledgePage />} />
 
-        {/* Member-only: a user's own settings */}
-        <Route
-          path="/account"
-          element={
-            <AccountRoute>
-              <AccountPage />
-            </AccountRoute>
-          }
-        />
+          {/* Session Support (experimental — gated by feature flag at page level) */}
+          <Route path="/support" element={<SupportIndexPage />} />
+          <Route path="/support/new" element={<NewSupportRequestPage />} />
+          <Route path="/support/:id" element={<SupportTicketPage />} />
+
+          {/* v1.65.1 — Golden Ticket (user-driven flow). Wrapped in
+              FeatureGate so admins can toggle the whole feature off
+              from /admin/features. When off, the page shows the same
+              "this feature is currently off" panel the rest of the
+              app uses for experimental features. The backend also
+              gates /golden/queue and /me/sp with the same flag. */}
+          <Route
+            path="/golden"
+            element={
+              <FeatureGate featureKey="goldenTicket" featureLabel="Golden Ticket">
+                <GoldenTicketPage />
+              </FeatureGate>
+            }
+          />
+
+          <Route path="/welcome" element={<WelcomePackagePage />} />
+
+          {/* Member-only: a user's own settings */}
+          <Route
+            path="/account"
+            element={
+              <AccountRoute>
+                <AccountPage />
+              </AccountRoute>
+            }
+          />
+        </Route>
 
         {/* Admin Panel dedicated routes (guarded by AdminRoute) */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -125,8 +171,22 @@ function AppRoutes() {
         <Route path="/admin/zoom-insights" element={<AdminRoute><AdminLayout><AdminZoomInsights /></AdminLayout></AdminRoute>} />
         <Route path="/admin/settings/ai" element={<AdminRoute><AdminLayout><AdminAISettings /></AdminLayout></AdminRoute>} />
         <Route path="/admin/faqs/review" element={<AdminRoute><AdminLayout><FaqReview /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/welcome" element={<AdminRoute><AdminLayout><AdminWelcomePage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/projects" element={<AdminRoute><AdminLayout><AdminProjectsPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/projects" element={<AdminRoute><AdminLayout><AdminProjectsPage /></AdminLayout></AdminRoute>} />
         <Route path="/admin/auto-answer" element={<AdminRoute><AdminLayout><AdminAutoAnswerQueue /></AdminLayout></AdminRoute>} />
         <Route path="/admin/faq-audit" element={<AdminRoute><AdminLayout><AdminFAQAudit /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/batches" element={<AdminRoute><AdminLayout><AdminBatches /></AdminLayout></AdminRoute>} />
+
+        {/* Session Support admin (not gated by feature flag) */}
+        <Route path="/admin/support" element={<AdminRoute><AdminLayout><AdminSupportInbox /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/support/analytics" element={<AdminRoute><AdminLayout><AdminSupportAnalytics /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/support/guidance" element={<AdminRoute><AdminLayout><AdminSupportGuidance /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/support/categories" element={<AdminRoute><AdminLayout><AdminSupportCategories /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/support/:id" element={<AdminRoute><AdminLayout><AdminSupportTicket /></AdminLayout></AdminRoute>} />
+
+        {/* Feature flag toggles (admin only) */}
+        <Route path="/admin/features" element={<AdminRoute><AdminLayout><AdminFeatures /></AdminLayout></AdminRoute>} />
 
         {/* Catch-all fallback: redirect any unknown URL to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -169,8 +229,18 @@ const FIRST_VISIT_PROMPT_KEY = 'yaksha_first_visit_prompt_seen';
 function FirstVisitAuthPrompt() {
   const { isOpen } = useAuthModal();
   const { isAuthenticated, loading } = useAuth();
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    // The public FAQ discovery page is at "/" — no auth prompt there.
+    // The legacy /home and /explore paths (if any) also bypass it.
+    if (
+      pathname === '/' ||
+      pathname.startsWith('/explore') ||
+      pathname.startsWith('/home')
+    ) {
+      return;
+    }
     if (loading) return;             // wait for the initial auth check
     if (isAuthenticated) return;    // signed-in users don't need a welcome prompt
     if (typeof window === 'undefined') return;
@@ -194,7 +264,7 @@ function FirstVisitAuthPrompt() {
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [loading, isAuthenticated]);
+  }, [loading, isAuthenticated, pathname]);
 
   // No-op render — this component is purely a side-effect host.
   void isOpen;
@@ -206,11 +276,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AuthModalHost>
-          <Suspense fallback={<div className="min-h-screen bg-bg flex items-center justify-center"><Spinner size="md" /></div>}>
-            <AppRoutes />
-          </Suspense>
-        </AuthModalHost>
+        <FeatureFlagProvider>
+          <BatchProvider>
+            <AuthModalHost>
+              <Suspense fallback={<div className="min-h-screen bg-bg flex items-center justify-center"><Spinner size="md" /></div>}>
+                <AppRoutes />
+              </Suspense>
+            </AuthModalHost>
+          </BatchProvider>
+        </FeatureFlagProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -2,7 +2,7 @@
  * Quick smoke test for the OAuth state signing/verification.
  * Run with: cd backend && JWT_SECRET=test_secret node --import tsx scripts/test-oauth-state.ts
  */
-import { signOAuthState, verifyOAuthState } from '../utils/zoomOAuth.js';
+import { signOAuthState, verifyOAuthState } from '../utils/zoom/zoomOAuth.js';
 
 let passed = 0;
 let failed = 0;

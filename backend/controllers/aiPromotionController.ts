@@ -23,7 +23,7 @@ import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import CommunityPost from '../models/CommunityPost.js';
 import FAQ from '../models/FAQ.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -150,7 +150,7 @@ RULES:
     if (result.isDuplicate && result.duplicateOfId) {
       duplicateOf = result.duplicateOfId;
     } else {
-      const { detectDuplicatesWithAI } = await import('../utils/duplicateDetector.js');
+      const { detectDuplicatesWithAI } = await import('../utils/ai/duplicateDetector.js');
       const dupes = await detectDuplicatesWithAI(post.title);
       const strongDuplicate = dupes.find((d: { score: number; source: string }) => d.score >= 0.80 && d.source === 'faq');
       if (strongDuplicate) duplicateOf = strongDuplicate._id;

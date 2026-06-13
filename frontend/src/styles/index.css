@@ -2029,4 +2029,91 @@ select option {
   :root .admin-badge-moderator{ background: #ecfeff; color: #155e75; border-color: #a5f3fc; }
   :root .admin-badge-user     { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
   :root .admin-badge-default  { background: #f9fafb; color: #374151; border-color: #e5e7eb; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     WELCOME PACKAGE REDESIGN — TRUE SPATIAL OS
+     ═══════════════════════════════════════════════════════════════ */
+  .spatial-glass {
+    background: rgb(var(--bg-card-rgb) / 0.15);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgb(var(--border-rgb) / 0.15);
+    box-shadow: inset 0 1px 0 rgb(var(--bg-card-rgb) / 0.2), 0 20px 40px rgb(var(--text-primary-rgb) / 0.1);
+  }
+  
+  .spatial-glass-subtle {
+    background: rgb(var(--bg-card-rgb) / 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgb(var(--border-rgb) / 0.1);
+    box-shadow: inset 0 1px 0 rgb(var(--bg-card-rgb) / 0.1), 0 10px 30px rgb(var(--text-primary-rgb) / 0.05);
+  }
+
+  .spatial-nav-pill {
+    background: rgb(var(--bg-card-rgb) / 0.4);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgb(var(--border-rgb) / 0.1);
+    box-shadow: inset 0 1px 0 rgb(var(--bg-card-rgb) / 0.1), 0 10px 30px rgb(var(--text-primary-rgb) / 0.1);
+  }
+
+  .spatial-chat-ai {
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.15) 0%, rgb(var(--bg-card-rgb) / 0.4) 100%);
+    backdrop-filter: blur(30px);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
+    box-shadow: 0 10px 25px rgb(var(--text-primary-rgb) / 0.1), inset 0 1px 0 rgb(var(--bg-card-rgb) / 0.1);
+  }
+
+  .spatial-chat-user {
+    background: linear-gradient(135deg, rgb(var(--bg-card-rgb) / 0.12) 0%, rgb(var(--bg-card-rgb) / 0.02) 100%);
+    backdrop-filter: blur(30px);
+    border: 1px solid rgb(var(--border-rgb) / 0.15);
+    box-shadow: 0 10px 25px rgb(var(--text-primary-rgb) / 0.1), inset 0 1px 0 rgb(var(--bg-card-rgb) / 0.1);
+  }
+
+  /* Keyframes for glowing orbs / floating background */
+  @keyframes spatialOrb1 {
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.2; }
+    33% { transform: translate(10vw, 10vh) scale(1.2) rotate(120deg); opacity: 0.3; }
+    66% { transform: translate(-5vw, 15vh) scale(0.9) rotate(240deg); opacity: 0.25; }
+    100% { transform: translate(0, 0) scale(1) rotate(360deg); opacity: 0.2; }
+  }
+  @keyframes spatialOrb2 {
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.25; }
+    33% { transform: translate(-10vw, -8vh) scale(1.3) rotate(-120deg); opacity: 0.15; }
+    66% { transform: translate(5vw, -12vh) scale(0.8) rotate(-240deg); opacity: 0.3; }
+    100% { transform: translate(0, 0) scale(1) rotate(-360deg); opacity: 0.25; }
+  }
+  @keyframes spatialOrb3 {
+    0% { transform: translate(0, 0) scale(1); opacity: 0.15; }
+    50% { transform: translate(5vw, -5vh) scale(1.4); opacity: 0.25; }
+    100% { transform: translate(0, 0) scale(1); opacity: 0.15; }
+  }
+
+  .ambient-spatial-1 {
+    animation: spatialOrb1 25s infinite ease-in-out alternate;
+  }
+  .ambient-spatial-2 {
+    animation: spatialOrb2 30s infinite ease-in-out alternate;
+  }
+  .ambient-spatial-3 {
+    animation: spatialOrb3 20s infinite ease-in-out alternate;
+  }
+
+  /* Glow effects */
+  .text-glow-spatial {
+    text-shadow: 0 0 15px rgb(var(--text-primary-rgb) / 0.3), 0 0 30px rgb(var(--text-primary-rgb) / 0.1);
+  }
+  .text-glow-accent-spatial {
+    text-shadow: 0 0 15px rgb(var(--accent-rgb) / 0.6), 0 0 30px rgb(var(--accent-rgb) / 0.3);
+  }
+  
+  /* Timeline specific */
+  .spatial-timeline-line {
+    background: linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.8), rgb(var(--accent-rgb) / 0.1));
+    box-shadow: 0 0 25px rgb(var(--accent-rgb) / 0.4);
+  }
+  .spatial-timeline-node {
+    box-shadow: 0 0 0 6px rgb(var(--bg-primary-rgb)), 0 0 25px rgb(var(--accent-rgb) / 0.8);
+  }
 }

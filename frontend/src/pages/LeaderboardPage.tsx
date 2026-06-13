@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../utils/api';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { CommunityDoodles } from '../components/ui/PageDoodles';
 import Avatar from '../components/ui/Avatar';
@@ -93,7 +92,6 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-bg grid-bg relative">
       <CommunityDoodles />
-      <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-12 relative z-10">
         {/* Header + period tabs */}

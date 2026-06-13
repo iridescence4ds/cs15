@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import CommunityPost from '../models/CommunityPost.js';
 import FAQ from '../models/FAQ.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 interface RelatedItem {
   _id: string;

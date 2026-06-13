@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import FAQ from '../models/FAQ.js';
 import FreshReviewVote from '../models/FreshReviewVote.js';
 import FreshReviewLog, { type FreshReviewEventType } from '../models/FreshReviewLog.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/http/logger.js';
 
 // Configurable thresholds from env (with defaults)
 const VERIFY_THRESHOLD = parseInt(process.env['FAQ_VERIFY_THRESHOLD'] || '3');
@@ -356,7 +356,7 @@ export const verifyEscalatedFAQ = async (req: Request<{ id: string }>, res: Resp
     // Regenerate embedding if content changed
     if (question || answer || category) {
       try {
-        const { generateEmbedding } = await import('../utils/embeddings.js');
+        const { generateEmbedding } = await import('../utils/ai/embeddings.js');
         faq.embedding = await generateEmbedding(
           `Section: ${faq.category}. Question: ${faq.question}. Answer: ${faq.answer}`
         );

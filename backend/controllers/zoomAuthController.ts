@@ -13,11 +13,11 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { ZoomMeeting } from '../models/ZoomMeeting.js';
-import { buildZoomAuthUrl, exchangeCodeForTokens, getZoomUserId, verifyOAuthState } from '../utils/zoomOAuth.js';
-import { encrypt } from '../utils/crypto.js';
-import { zoomOAuthCircuit, CircuitOpenError } from '../utils/circuitBreaker.js';
-import { sanitizeBase64, sanitizeText } from '../utils/sanitize.js';
-import { logger } from '../utils/logger.js';
+import { buildZoomAuthUrl, exchangeCodeForTokens, getZoomUserId, verifyOAuthState } from '../utils/zoom/zoomOAuth.js';
+import { encrypt } from '../utils/auth/crypto.js';
+import { zoomOAuthCircuit, CircuitOpenError } from '../utils/http/circuitBreaker.js';
+import { sanitizeBase64, sanitizeText } from '../utils/http/sanitize.js';
+import { logger } from '../utils/http/logger.js';
 
 // ─── Connect ────────────────────────────────────────────────────────────────────
 
@@ -235,7 +235,7 @@ export async function adminBackfill(req: Request, res: Response): Promise<void> 
   }
 
   if (fromDate || toDate) {
-    const { getUserZoomToken, zoomApiAsUser } = await import('../utils/zoomOAuth.js');
+    const { getUserZoomToken, zoomApiAsUser } = await import('../utils/zoom/zoomOAuth.js');
     const token = await getUserZoomToken(target);
     const from  = fromDate ?? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const to    = toDate   ?? new Date().toISOString().split('T')[0];
@@ -250,7 +250,7 @@ export async function adminBackfill(req: Request, res: Response): Promise<void> 
 
     const { processTranscriptForUser } = await import('./zoomController.js');
     const { ZoomMeeting: ZM } = await import('../models/ZoomMeeting.js');
-    const { sanitizeText } = await import('../utils/sanitize.js');
+    const { sanitizeText } = await import('../utils/http/sanitize.js');
 
     let queued = 0;
     for (const meeting of meetings) {
